@@ -12,20 +12,24 @@ import {
     Alert,
 } from 'react-native';
 import { fetchMovieDetails, MovieDetails, Episode, SuggestedMovie, getStreamUrl } from '../services/api';
+import VideoPlayer from './VideoPlayer';
 
 interface DetailsPageProps {
     movieId: string;
     onClose: () => void;
     onMoviePress: (id: string) => void;
+    isPrimeVideo?: boolean;
+    isHotstar?: boolean;
 }
 
 const { width } = Dimensions.get('window');
 
-const DetailsPage: React.FC<DetailsPageProps> = ({ movieId, onClose, onMoviePress }) => {
+const DetailsPage: React.FC<DetailsPageProps> = ({ movieId, onClose, onMoviePress, isPrimeVideo = false, isHotstar = false }) => {
     const [details, setDetails] = useState<MovieDetails | null>(null);
     const [loading, setLoading] = useState(true);
     const [selectedSeason, setSelectedSeason] = useState<string>('1');
     const [loadingStream, setLoadingStream] = useState(false);
+    const [videoStream, setVideoStream] = useState<{ url: string; cookies: string; title: string } | null>(null);
 
     useEffect(() => {
         loadDetails();
@@ -33,7 +37,7 @@ const DetailsPage: React.FC<DetailsPageProps> = ({ movieId, onClose, onMoviePres
 
     const loadDetails = async () => {
         setLoading(true);
-        const data = await fetchMovieDetails(movieId);
+        const data = await fetchMovieDetails(movieId, isPrimeVideo, isHotstar);
         setDetails(data);
         setLoading(false);
     };
@@ -43,18 +47,15 @@ const DetailsPage: React.FC<DetailsPageProps> = ({ movieId, onClose, onMoviePres
         
         setLoadingStream(true);
         try {
-            const streamUrl = await getStreamUrl(movieId, details.title);
+            const streamResult = await getStreamUrl(movieId, details.title, isPrimeVideo, isHotstar);
             setLoadingStream(false);
             
-            if (streamUrl) {
-                Alert.alert(
-                    'Stream URL',
-                    streamUrl,
-                    [
-                        { text: 'Copy', onPress: () => console.log('Copy to clipboard:', streamUrl) },
-                        { text: 'Close', style: 'cancel' }
-                    ]
-                );
+            if (streamResult) {
+                setVideoStream({
+                    url: streamResult.url,
+                    cookies: streamResult.cookies,
+                    title: details.title,
+                });
             } else {
                 Alert.alert('Error', 'Failed to get stream URL');
             }
@@ -67,18 +68,15 @@ const DetailsPage: React.FC<DetailsPageProps> = ({ movieId, onClose, onMoviePres
     const handleEpisodePress = async (episode: Episode) => {
         setLoadingStream(true);
         try {
-            const streamUrl = await getStreamUrl(episode.id, episode.t);
+            const streamResult = await getStreamUrl(episode.id, episode.t, isPrimeVideo, isHotstar);
             setLoadingStream(false);
             
-            if (streamUrl) {
-                Alert.alert(
-                    `${episode.s}:E${episode.ep} - ${episode.t}`,
-                    streamUrl,
-                    [
-                        { text: 'Copy', onPress: () => console.log('Copy to clipboard:', streamUrl) },
-                        { text: 'Close', style: 'cancel' }
-                    ]
-                );
+            if (streamResult) {
+                setVideoStream({
+                    url: streamResult.url,
+                    cookies: streamResult.cookies,
+                    title: `${episode.s}:E${episode.ep} - ${episode.t}`,
+                });
             } else {
                 Alert.alert('Error', 'Failed to get stream URL');
             }
@@ -87,6 +85,22 @@ const DetailsPage: React.FC<DetailsPageProps> = ({ movieId, onClose, onMoviePres
             Alert.alert('Error', 'Failed to get stream URL');
         }
     };
+
+    const handleCloseVideo = () => {
+        setVideoStream(null);
+    };
+
+    // Show video player if video stream is available
+    if (videoStream) {
+        return (
+            <VideoPlayer
+                videoUrl={videoStream.url}
+                title={videoStream.title}
+                cookies={videoStream.cookies}
+                onClose={handleCloseVideo}
+            />
+        );
+    }
 
     if (loading) {
         return (

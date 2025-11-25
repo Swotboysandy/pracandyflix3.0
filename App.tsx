@@ -30,6 +30,8 @@ const App = () => {
   const [activeTab, setActiveTab] = useState('All');
   const [isSearchVisible, setIsSearchVisible] = useState(false);
   const [selectedMovieId, setSelectedMovieId] = useState<string | null>(null);
+  const [selectedMovieIsPV, setSelectedMovieIsPV] = useState(false);
+  const [selectedMovieIsHS, setSelectedMovieIsHS] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -59,15 +61,21 @@ const App = () => {
   };
 
   const handleMoviePress = (movie: Movie) => {
+    setIsSearchVisible(false); // Close search when movie is selected
     setSelectedMovieId(movie.id);
+    setSelectedMovieIsPV(movie.isPrimeVideo || false);
+    setSelectedMovieIsHS(movie.isHotstar || false);
   };
 
   const handleCloseDetails = () => {
     setSelectedMovieId(null);
+    setSelectedMovieIsPV(false);
+    setSelectedMovieIsHS(false);
   };
 
   const handleDetailsMoviePress = (id: string) => {
     setSelectedMovieId(id);
+    // Keep the same isPV state when navigating between related movies
   };
 
   if (!splashFinished || loading) {
@@ -88,6 +96,18 @@ const App = () => {
 
 
 
+  // Show search page
+  if (isSearchVisible) {
+    return (
+      <SafeAreaView style={styles.background}>
+        <Search
+          onClose={() => setIsSearchVisible(false)}
+          onMoviePress={handleMoviePress}
+        />
+      </SafeAreaView>
+    );
+  }
+
   // Show details page if a movie is selected
   if (selectedMovieId) {
     return (
@@ -95,6 +115,8 @@ const App = () => {
         movieId={selectedMovieId}
         onClose={handleCloseDetails}
         onMoviePress={handleDetailsMoviePress}
+        isPrimeVideo={selectedMovieIsPV}
+        isHotstar={selectedMovieIsHS}
       />
     );
   }

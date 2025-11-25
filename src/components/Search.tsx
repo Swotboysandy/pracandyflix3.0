@@ -26,6 +26,7 @@ const Search: React.FC<SearchProps> = ({ onClose, onMoviePress }) => {
     const [results, setResults] = useState<Movie[]>([]);
     const [loading, setLoading] = useState(false);
     const [debouncedQuery, setDebouncedQuery] = useState(query);
+    const [selectedPlatform, setSelectedPlatform] = useState<'netflix' | 'primevideo' | 'hotstar'>('netflix');
 
     // Debounce search
     useEffect(() => {
@@ -48,10 +49,17 @@ const Search: React.FC<SearchProps> = ({ onClose, onMoviePress }) => {
 
     const handleSearch = async (text: string) => {
         setLoading(true);
-        const movies = await searchMovies(text);
+        const movies = await searchMovies(text, selectedPlatform);
         setResults(movies);
         setLoading(false);
     };
+
+    // Re-search when platform changes
+    useEffect(() => {
+        if (debouncedQuery.trim().length > 2) {
+            handleSearch(debouncedQuery);
+        }
+    }, [selectedPlatform]);
 
     const renderItem = ({ item }: { item: Movie }) => (
         <TouchableOpacity onPress={() => onMoviePress(item)} style={styles.itemContainer}>
@@ -83,6 +91,26 @@ const Search: React.FC<SearchProps> = ({ onClose, onMoviePress }) => {
                         </TouchableOpacity>
                     )}
                 </View>
+            </View>
+            <View style={styles.toggleContainer}>
+                <TouchableOpacity
+                    style={[styles.toggleButton, selectedPlatform === 'netflix' && styles.toggleButtonActive]}
+                    onPress={() => setSelectedPlatform('netflix')}
+                >
+                    <Text style={[styles.toggleText, selectedPlatform === 'netflix' && styles.toggleTextActive]}>Netflix</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                    style={[styles.toggleButton, selectedPlatform === 'primevideo' && styles.toggleButtonActive]}
+                    onPress={() => setSelectedPlatform('primevideo')}
+                >
+                    <Text style={[styles.toggleText, selectedPlatform === 'primevideo' && styles.toggleTextActive]}>Prime</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                    style={[styles.toggleButton, selectedPlatform === 'hotstar' && styles.toggleButtonActive]}
+                    onPress={() => setSelectedPlatform('hotstar')}
+                >
+                    <Text style={[styles.toggleText, selectedPlatform === 'hotstar' && styles.toggleTextActive]}>Hotstar</Text>
+                </TouchableOpacity>
             </View>
 
             {loading ? (
@@ -190,6 +218,31 @@ const styles = StyleSheet.create({
         fontSize: 14,
         textAlign: 'center',
         paddingHorizontal: 40,
+    },
+    toggleContainer: {
+        flexDirection: 'row',
+        paddingHorizontal: 10,
+        marginBottom: 10,
+        gap: 10,
+    },
+    toggleButton: {
+        flex: 1,
+        paddingVertical: 8,
+        paddingHorizontal: 16,
+        backgroundColor: '#333',
+        borderRadius: 5,
+        alignItems: 'center',
+    },
+    toggleButtonActive: {
+        backgroundColor: '#E50914',
+    },
+    toggleText: {
+        color: '#999',
+        fontSize: 14,
+        fontWeight: '600',
+    },
+    toggleTextActive: {
+        color: '#fff',
     },
 });
 
