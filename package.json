@@ -10,13 +10,17 @@
     "test": "jest"
   },
   "dependencies": {
+    "@8man/react-native-media-console": "^2.2.4-alpha.31",
+    "@react-native-vector-icons/common": "^12.4.0",
     "@react-native/new-app-screen": "0.82.1",
     "axios": "^1.13.2",
     "lottie-react-native": "^7.3.4",
     "react": "19.1.1",
     "react-native": "0.82.1",
     "react-native-cheerio": "^1.0.0-rc.4",
-    "react-native-safe-area-context": "^5.5.2"
+    "react-native-safe-area-context": "^5.5.2",
+    "react-native-video": "^6.18.0",
+    "react-native-video-player": "^0.16.3"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",

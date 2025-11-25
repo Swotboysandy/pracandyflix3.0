@@ -1,8 +1,4 @@
 import axios from 'axios';
-// @ts-ignore
-const cheerio = require('react-native-cheerio');
-
-const TARGET_URL = 'https://odd-cloud-1e14.hunternisha55.workers.dev/?url=https://net51.cc/home&cookie=user_token=0b9f0991e238ee73b1ce39dbf5639c27;%20t_hash=78ad8a001ef5ccb45538e1a671faeab7%3A%3A1763611120%3A%3Ani;%20t_hash_t=fbc814bbb864b0cc7c8a4aac10d5117b%3A%3Ad4e78f96b1de3339e08a9d2796a077c2%3A%3A1763728839%3A%3Ani;';
 
 export interface Movie {
     id: string;
@@ -15,81 +11,218 @@ export interface Section {
     movies: Movie[];
 }
 
+const HOME_DATA_URL = 'https://net-cookie-kacj.vercel.app/api/data';
+
 export const fetchHomeData = async (): Promise<Section[]> => {
     try {
-        const response = await axios.get(TARGET_URL, {
-            headers: {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-            },
-        });
+        const response = await axios.get(HOME_DATA_URL);
 
-        const html = response.data;
-        const $ = cheerio.load(html);
-        const sections: Section[] = [];
+        if (response.data && response.data.success && response.data.data) {
+            const sections: Section[] = response.data.data.map((category: any) => ({
+                title: category.title,
+                movies: category.movies.map((item: any) => ({
+                    id: item.id,
+                    title: item.title || item.id,
+                    imageUrl: item.imageUrl,
+                })),
+            }));
 
-        // Parse Billboard (Hero)
-        const billboard = $('.billboard-row').first();
-        if (billboard.length > 0) {
-            const heroImg = billboard.find('.hero-image-wrapper img').attr('src');
-            const titleImg = billboard.find('.billboard-title img').attr('src');
-            const synopsis = billboard.find('.synopsis').text().trim();
-            const id = billboard.find('.billboard-links').attr('data-post') || 'hero';
-
-            if (heroImg) {
-                sections.push({
-                    title: 'Featured',
-                    movies: [{
-                        id,
-                        title: 'Featured',
-                        imageUrl: heroImg,
-                        // We can add more fields if needed like synopsis or titleImg
-                    }]
-                });
-            }
+            return sections;
         }
 
-        // Parse Rows
-        $('.lolomoRow').each((_: any, rowElem: any) => {
-            const row = $(rowElem);
-            const title = row.find('.row-header-title').text().trim();
-
-            const movies: Movie[] = [];
-            row.find('.slider-item').each((__: any, itemElem: any) => {
-                const item = $(itemElem);
-                const id = item.attr('data-post');
-                const img = item.find('img.boxart-image');
-                const src = img.attr('data-src') || img.attr('src');
-                const alt = img.attr('alt') || 'Movie';
-
-                if (id && src) {
-                    movies.push({
-                        id,
-                        title: alt,
-                        imageUrl: src,
-                    });
-                }
-            });
-
-            if (movies.length > 0 && title) {
-                sections.push({
-                    title,
-                    movies,
-                });
-            }
-        });
-
-        return sections;
+        return [];
     } catch (error) {
         console.error('Error fetching data:', error);
         return [];
     }
 };
 
-export const debugHtml = async () => {
-    try {
-        const response = await axios.get(TARGET_URL);
-        console.log(response.data);
-    } catch (e) {
-        console.error(e);
-    }
+const COOKIE_URL = 'https://anshu78780.github.io/json/cookies.json';
+
+export interface Episode {
+    complate: string;
+    id: string;
+    t: string;
+    s: string;
+    ep: string;
+    ep_desc: string;
+    time: string;
 }
+
+export interface Season {
+    s: string;
+    id: string;
+    ep: string;
+    sele?: string;
+}
+
+export interface SuggestedMovie {
+    id: string;
+    d: string;
+    ua: string;
+    t: string;
+    y: string;
+    m: string;
+}
+
+export interface MovieDetails {
+    status: string;
+    d_lang: string;
+    title: string;
+    year: string;
+    ua: string;
+    match: string;
+    runtime: string;
+    hdsd: string;
+    type: string;
+    creator: string;
+    director: string;
+    writer: string;
+    short_cast: string;
+    cast: string;
+    genre: string;
+    thismovieis: string;
+    m_desc: string;
+    m_reason: string;
+    desc: string;
+    season?: Season[];
+    episodes?: Episode[];
+    nextPageShow?: number;
+    nextPage?: number;
+    nextPageSeason?: string;
+    lang?: Array<{ l: string; s: string }>;
+    last_ep?: string;
+    resume?: string;
+    suggest?: SuggestedMovie[];
+    error: any;
+}
+
+export const fetchMovieDetails = async (id: string): Promise<MovieDetails | null> => {
+    try {
+        // 1. Fetch Cookies
+        const cookieResponse = await axios.get(COOKIE_URL);
+        const cookie = cookieResponse.data.cookies;
+
+        // 2. Fetch movie details with cookies
+        const time = Date.now();
+        const url = `https://net20.cc/post.php?id=${id}&t=${time}`;
+
+        const response = await axios.get(url, {
+            headers: {
+                'Cookie': cookie,
+                'Referer': 'https://net20.cc/home',
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+            },
+        });
+
+        if (response.data && response.data.status === 'y') {
+            return response.data;
+        }
+
+        return null;
+    } catch (error) {
+        console.error('Error fetching movie details:', error);
+        return null;
+    }
+};
+
+export interface StreamSource {
+    file: string;
+    label?: string;
+    type?: string;
+}
+
+export interface StreamData {
+    sources: StreamSource[];
+    title?: string;
+}
+
+export const getStreamUrl = async (id: string, title: string = 'Movie'): Promise<string | null> => {
+    try {
+        // 1. Fetch Cookies
+        const cookieResponse = await axios.get(COOKIE_URL);
+        const baseCookie = cookieResponse.data.cookies;
+        const cookies = baseCookie + 'ott=nf; hd=on;';
+
+        // 2. POST to play.php to get the 'h' parameter
+        const playUrl = 'https://net20.cc/play.php';
+        const formData = new FormData();
+        formData.append('id', id);
+
+        const playResponse = await axios.post(playUrl, formData, {
+            headers: {
+                'Cookie': cookies,
+                'Content-Type': 'multipart/form-data',
+            },
+        });
+
+        console.log('Play response:', playResponse.data);
+
+        if (!playResponse.data?.h) {
+            throw new Error('Failed to get h parameter from play.php');
+        }
+
+        // 3. Make request to playlist.php with the h parameter
+        const timestamp = Math.round(new Date().getTime() / 1000);
+        const streamBaseUrl = 'https://net51.cc';
+        const playlistUrl = `${streamBaseUrl}/playlist.php?id=${id}&t=${encodeURIComponent(title)}&tm=${timestamp}&h=${playResponse.data.h}`;
+
+        const playlistResponse = await axios.get(playlistUrl, {
+            headers: {
+                'Cookie': cookies,
+                'Referer': 'https://net51.cc/',
+                'Origin': 'https://net51.cc',
+            },
+        });
+
+        const data = playlistResponse.data?.[0];
+        
+        if (data?.sources && data.sources.length > 0) {
+            let streamUrl = data.sources[0].file;
+            
+            // If it's a relative path, prepend the stream base URL
+            if (!streamUrl.startsWith('http')) {
+                streamUrl = streamBaseUrl + streamUrl;
+            }
+            
+            return streamUrl;
+        }
+
+        return null;
+    } catch (error) {
+        console.error('Error getting stream URL:', error);
+        return null;
+    }
+};
+
+export const searchMovies = async (query: string): Promise<Movie[]> => {
+    try {
+        // 1. Fetch Cookies
+        const cookieResponse = await axios.get(COOKIE_URL);
+        const cookie = cookieResponse.data.cookies;
+
+        // 2. Perform Search
+        const time = Date.now();
+        const searchPageUrl = `https://net51.cc/search.php?s=${encodeURIComponent(query)}&t=${time}`;
+        const finalUrl = `https://odd-cloud-1e14.hunternisha55.workers.dev/?url=${searchPageUrl}&cookie=${encodeURIComponent(cookie)}`;
+
+        const response = await axios.get(finalUrl, {
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+            },
+        });
+
+        if (response.data && response.data.searchResult) {
+            return response.data.searchResult.map((item: any) => ({
+                id: item.id,
+                title: item.t,
+                imageUrl: `https://img.nfmirrorcdn.top/poster/h/${item.id}.jpg`,
+            }));
+        }
+
+        return [];
+    } catch (error) {
+        console.error('Error searching movies:', error);
+        return [];
+    }
+};

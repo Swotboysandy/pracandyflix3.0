@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
 import {
-  SafeAreaView,
   ScrollView,
   StatusBar,
   StyleSheet,
@@ -12,10 +11,14 @@ import {
   TouchableOpacity,
   Dimensions,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { fetchHomeData, Section, Movie } from './src/services/api';
 import Row from './src/components/Row';
 import MovieItem from './src/components/MovieItem';
 import SplashScreen from './src/components/SplashScreen';
+import Search from './src/components/Search';
+import DetailsPage from './src/components/DetailsPage';
+
 
 const { width } = Dimensions.get('window');
 
@@ -25,6 +28,8 @@ const App = () => {
   const [splashFinished, setSplashFinished] = useState(false);
   const [heroMovie, setHeroMovie] = useState<Movie | null>(null);
   const [activeTab, setActiveTab] = useState('All');
+  const [isSearchVisible, setIsSearchVisible] = useState(false);
+  const [selectedMovieId, setSelectedMovieId] = useState<string | null>(null);
 
   useEffect(() => {
     loadData();
@@ -54,27 +59,18 @@ const App = () => {
   };
 
   const handleMoviePress = (movie: Movie) => {
-    Alert.alert('Selected Movie', `ID: ${movie.id}\nTitle: ${movie.title}`);
+    setSelectedMovieId(movie.id);
   };
 
-  // Show Splash Screen until animation finishes OR data is still loading (optional logic)
-  // Usually we want to wait for animation to finish at least once.
-  // If data loads fast, we wait for animation. If data is slow, we show loading indicator after animation?
-  // Or just keep splash until data is ready AND animation is done.
+  const handleCloseDetails = () => {
+    setSelectedMovieId(null);
+  };
+
+  const handleDetailsMoviePress = (id: string) => {
+    setSelectedMovieId(id);
+  };
 
   if (!splashFinished || loading) {
-    // If data is ready but animation is not, we still show splash (handled by onAnimationFinish)
-    // If animation is done but data is loading, we could show a spinner or keep the splash logo.
-    // For a smooth experience, let's keep the splash view but maybe show a loading indicator if it takes too long?
-    // For now, let's just rely on the SplashScreen component. 
-    // We can pass a prop to SplashScreen to tell it to loop if data isn't ready, 
-    // but the user asked for "custom by that get data".
-
-    // Let's modify logic: 
-    // 1. Render SplashScreen.
-    // 2. When Animation finishes, check if loading is false. If yes, hide splash.
-    // 3. If loading is true, maybe show a loading indicator on top of splash or loop?
-    // For simplicity: Wait for both.
 
     if (!splashFinished) {
       return <SplashScreen onFinish={handleSplashFinish} />;
@@ -90,6 +86,19 @@ const App = () => {
     }
   }
 
+
+
+  // Show details page if a movie is selected
+  if (selectedMovieId) {
+    return (
+      <DetailsPage
+        movieId={selectedMovieId}
+        onClose={handleCloseDetails}
+        onMoviePress={handleDetailsMoviePress}
+      />
+    );
+  }
+
   return (
     <SafeAreaView style={styles.background}>
       <StatusBar barStyle="light-content" backgroundColor="#000" />
@@ -99,23 +108,9 @@ const App = () => {
         <TouchableOpacity>
           <Image source={{ uri: 'https://img.icons8.com/ios-filled/50/ffffff/menu--v1.png' }} style={styles.icon} />
         </TouchableOpacity>
-        <Image
-          source={{ uri: 'https://upload.wikimedia.org/wikipedia/commons/thumb/0/08/Netflix_2015_logo.svg/799px-Netflix_2015_logo.svg.png' }}
-          style={styles.logo}
-          resizeMode="contain"
-        />
-        <TouchableOpacity>
-          <Image source={{ uri: 'https://img.icons8.com/color/48/000000/netflix-desktop-app.png' }} style={styles.profileIcon} />
+        <TouchableOpacity onPress={() => setIsSearchVisible(true)}>
+          <Image source={{ uri: 'https://img.icons8.com/ios-filled/50/ffffff/search--v1.png' }} style={styles.icon} />
         </TouchableOpacity>
-      </View>
-
-      {/* Category Tabs */}
-      <View style={styles.categoryBar}>
-        {['All', 'TV Shows', 'Movies', 'My List'].map((tab) => (
-          <TouchableOpacity key={tab} onPress={() => setActiveTab(tab)}>
-            <Text style={[styles.categoryText, activeTab === tab && styles.activeCategoryText]}>{tab}</Text>
-          </TouchableOpacity>
-        ))}
       </View>
 
       <ScrollView
@@ -140,25 +135,6 @@ const App = () => {
         </View>
       </ScrollView>
 
-      {/* Bottom Navigation */}
-      <View style={styles.bottomNav}>
-        <TouchableOpacity style={styles.navItem}>
-          <Image source={{ uri: 'https://img.icons8.com/ios-filled/50/E50914/home.png' }} style={styles.navIcon} />
-          <Text style={[styles.navText, styles.activeNavText]}>Home</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.navItem}>
-          <Image source={{ uri: 'https://img.icons8.com/ios-filled/50/ffffff/search--v1.png' }} style={styles.navIcon} />
-          <Text style={styles.navText}>Search</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.navItem}>
-          <Image source={{ uri: 'https://img.icons8.com/ios-filled/50/ffffff/like--v1.png' }} style={styles.navIcon} />
-          <Text style={styles.navText}>Saved</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.navItem}>
-          <Image source={{ uri: 'https://img.icons8.com/ios-filled/50/ffffff/download.png' }} style={styles.navIcon} />
-          <Text style={styles.navText}>Downloads</Text>
-        </TouchableOpacity>
-      </View>
 
     </SafeAreaView>
   );
@@ -182,36 +158,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 10,
     paddingBottom: 10,
+    position: 'absolute', // Overlay on top of content if desired, or relative
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 10,
   },
   icon: {
     width: 24,
     height: 24,
     tintColor: 'white',
-  },
-  logo: {
-    width: 100,
-    height: 30,
-  },
-  profileIcon: {
-    width: 30,
-    height: 30,
-    borderRadius: 4,
-  },
-  categoryBar: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    paddingVertical: 15,
-    paddingHorizontal: 10,
-  },
-  categoryText: {
-    color: '#fff',
-    fontSize: 15,
-    fontWeight: '500',
-    opacity: 0.7,
-  },
-  activeCategoryText: {
-    fontWeight: 'bold',
-    opacity: 1,
   },
   scrollView: {
     flex: 1,
