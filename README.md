@@ -1,97 +1,217 @@
-This is a new [**React Native**](https://reactnative.dev) project, bootstrapped using [`@react-native-community/cli`](https://github.com/react-native-community/cli).
+# Netflix Clone - React Native
 
-# Getting Started
+A feature-rich streaming app built with React Native that provides access to content from Netflix, Prime Video, and Hotstar platforms. Browse, search, and stream your favorite movies and TV shows across multiple platforms in one unified experience.
 
-> **Note**: Make sure you have completed the [Set Up Your Environment](https://reactnative.dev/docs/set-up-your-environment) guide before proceeding.
+## ✨ Features
 
-## Step 1: Start Metro
+- 🎬 **Multi-Platform Support**: Access content from Netflix, Prime Video, and Hotstar
+- 🔍 **Smart Search**: Search across all platforms with platform-specific results
+- 🎯 **Browse Categories**: Explore curated content sections and categories
+- 📱 **Native Experience**: Smooth animations and native video playback
+- 🎨 **Beautiful UI**: Clean, modern interface inspired by popular streaming services
+- 🎥 **Video Player**: Built-in video player with playback controls
+- 📺 **TV Shows & Episodes**: Browse seasons and episodes with detailed information
+- 🎭 **Movie Details**: Rich metadata including cast, genre, ratings, and descriptions
 
-First, you will need to run **Metro**, the JavaScript build tool for React Native.
+## 🚀 Getting Started
 
-To start the Metro dev server, run the following command from the root of your React Native project:
+### Prerequisites
 
-```sh
-# Using npm
-npm start
+Before you begin, ensure you have completed the [React Native Environment Setup](https://reactnative.dev/docs/set-up-your-environment).
 
-# OR using Yarn
-yarn start
+Required tools:
+- Node.js (v16 or higher)
+- npm or Yarn
+- React Native CLI
+- Android Studio (for Android development)
+- Xcode (for iOS development, macOS only)
+
+### Installation
+
+1. **Clone the repository**
+   ```sh
+   git clone <repository-url>
+   cd netflix
+   ```
+
+2. **Install dependencies**
+   ```sh
+   npm install
+   # or
+   yarn install
+   ```
+
+3. **iOS Setup** (macOS only)
+   ```sh
+   # Install Ruby bundler
+   bundle install
+   
+   # Install CocoaPods dependencies
+   cd ios
+   bundle exec pod install
+   cd ..
+   ```
+
+### Running the App
+
+1. **Start Metro Bundler**
+   ```sh
+   npm start
+   # or
+   yarn start
+   ```
+
+2. **Run on Android**
+   ```sh
+   npm run android
+   # or
+   yarn android
+   ```
+
+3. **Run on iOS**
+   ```sh
+   npm run ios
+   # or
+   yarn ios
+   ```
+
+## 📁 Project Structure
+
+```
+netflix/
+├── src/
+│   ├── assets/          # Images, animations, and static files
+│   ├── components/      # React components
+│   │   ├── DetailsPage.tsx    # Movie/show details screen
+│   │   ├── MovieItem.tsx      # Individual movie card
+│   │   ├── Row.tsx            # Horizontal movie row
+│   │   ├── Search.tsx         # Search interface
+│   │   ├── SplashScreen.tsx   # App splash screen
+│   │   └── VideoPlayer.tsx    # Video playback component
+│   ├── services/        # API and external services
+│   │   └── api.ts             # API integration layer
+│   └── types/           # TypeScript type definitions
+│       └── index.ts
+├── android/             # Android native code
+├── ios/                 # iOS native code
+└── App.tsx             # Main application component
 ```
 
-## Step 2: Build and run your app
+## 🔧 Configuration
 
-With Metro running, open a new terminal window/pane from the root of your React Native project, and use one of the following commands to build and run your Android or iOS app:
+### API Endpoints
+
+The app uses the following API endpoints (configured in `src/services/api.ts`):
+
+- **Home Data**: Content catalog and categories
+- **Search APIs**: Platform-specific search functionality
+- **Movie Details**: Detailed information for titles
+- **Streaming URLs**: Video playback endpoints
+
+### Platform Support
+
+- **Netflix**: Browse and stream Netflix content
+- **Prime Video**: Access Prime Video library
+- **Hotstar**: Stream Hotstar shows and movies
+
+## 🎯 Key Components
+
+### DetailsPage
+Displays comprehensive information about movies and TV shows including:
+- Title, year, rating, and runtime
+- Cast and crew information
+- Episode lists for TV shows
+- Suggested similar content
+
+### VideoPlayer
+Custom video player with:
+- Play/pause controls
+- Progress tracking
+- Fullscreen support
+- Error handling
+
+### Search
+Multi-platform search interface:
+- Platform selection (Netflix/Prime Video/Hotstar)
+- Real-time search results
+- Platform-specific content cards
+
+## 🛠️ Development
+
+### Testing
+```sh
+npm test
+# or
+yarn test
+```
+
+### Building for Production
+
+**Android**
+```sh
+cd android
+./gradlew assembleRelease
+```
+
+**iOS**
+```sh
+# Open Xcode and archive for distribution
+open ios/netflix.xcworkspace
+```
+
+## 📱 Platform-Specific Notes
 
 ### Android
-
-```sh
-# Using npm
-npm run android
-
-# OR using Yarn
-yarn android
-```
+- Minimum SDK: API 21 (Android 5.0)
+- Target SDK: API 33 (Android 13)
+- Uses Gradle build system
 
 ### iOS
+- Minimum iOS version: 13.0
+- Uses CocoaPods for dependency management
+- Swift-based native modules
 
-For iOS, remember to install CocoaPods dependencies (this only needs to be run on first clone or after updating native deps).
+## 🔄 Fast Refresh
 
-The first time you create a new project, run the Ruby bundler to install CocoaPods itself:
+This project supports React Native Fast Refresh for instant feedback during development:
+- Edit components and see changes immediately
+- Preserves component state during edits
+- Press `R` twice on Android or `R` in iOS Simulator to manually reload
 
+## 📚 Learn More
+
+- [React Native Documentation](https://reactnative.dev/docs/getting-started)
+- [React Native Community](https://github.com/react-native-community)
+- [TypeScript Documentation](https://www.typescriptlang.org/docs/)
+
+## 🐛 Troubleshooting
+
+**Metro Bundler Issues**
 ```sh
-bundle install
+npm start -- --reset-cache
 ```
 
-Then, and every time you update your native dependencies, run:
-
+**Android Build Failures**
 ```sh
-bundle exec pod install
+cd android
+./gradlew clean
+cd ..
 ```
 
-For more information, please visit [CocoaPods Getting Started guide](https://guides.cocoapods.org/using/getting-started.html).
-
+**iOS Build Issues**
 ```sh
-# Using npm
-npm run ios
-
-# OR using Yarn
-yarn ios
+cd ios
+pod deintegrate
+pod install
+cd ..
 ```
 
-If everything is set up correctly, you should see your new app running in the Android Emulator, iOS Simulator, or your connected device.
+For more help, visit the [React Native Troubleshooting Guide](https://reactnative.dev/docs/troubleshooting).
 
-This is one way to run your app — you can also build it directly from Android Studio or Xcode.
+## 📄 License
 
-## Step 3: Modify your app
+This project is for educational purposes only.
 
-Now that you have successfully run the app, let's make changes!
+---
 
-Open `App.tsx` in your text editor of choice and make some changes. When you save, your app will automatically update and reflect these changes — this is powered by [Fast Refresh](https://reactnative.dev/docs/fast-refresh).
-
-When you want to forcefully reload, for example to reset the state of your app, you can perform a full reload:
-
-- **Android**: Press the <kbd>R</kbd> key twice or select **"Reload"** from the **Dev Menu**, accessed via <kbd>Ctrl</kbd> + <kbd>M</kbd> (Windows/Linux) or <kbd>Cmd ⌘</kbd> + <kbd>M</kbd> (macOS).
-- **iOS**: Press <kbd>R</kbd> in iOS Simulator.
-
-## Congratulations! :tada:
-
-You've successfully run and modified your React Native App. :partying_face:
-
-### Now what?
-
-- If you want to add this new React Native code to an existing application, check out the [Integration guide](https://reactnative.dev/docs/integration-with-existing-apps).
-- If you're curious to learn more about React Native, check out the [docs](https://reactnative.dev/docs/getting-started).
-
-# Troubleshooting
-
-If you're having issues getting the above steps to work, see the [Troubleshooting](https://reactnative.dev/docs/troubleshooting) page.
-
-# Learn More
-
-To learn more about React Native, take a look at the following resources:
-
-- [React Native Website](https://reactnative.dev) - learn more about React Native.
-- [Getting Started](https://reactnative.dev/docs/environment-setup) - an **overview** of React Native and how setup your environment.
-- [Learn the Basics](https://reactnative.dev/docs/getting-started) - a **guided tour** of the React Native **basics**.
-- [Blog](https://reactnative.dev/blog) - read the latest official React Native **Blog** posts.
-- [`@facebook/react-native`](https://github.com/facebook/react-native) - the Open Source; GitHub **repository** for React Native.
+Built with ❤️ using React Native
