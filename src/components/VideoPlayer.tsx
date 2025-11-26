@@ -37,6 +37,7 @@ const CustomVideoPlayer: React.FC<CustomVideoPlayerProps> = ({
     const [playbackRate, setPlaybackRate] = useState(1.0);
     const [resizeMode, setResizeMode] = useState<'contain' | 'cover' | 'stretch'>('contain');
     const [retryKey, setRetryKey] = useState(0);
+    const [isLandscape, setIsLandscape] = useState(false);
     const controlsTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     // Track states
@@ -74,8 +75,11 @@ const CustomVideoPlayer: React.FC<CustomVideoPlayerProps> = ({
     const singleTapRef = useRef(null);
 
     useEffect(() => {
+        console.log('VideoPlayer MOUNTED');
+        console.log('Video URL:', videoUrl);
+        console.log('Cookies:', cookies);
         return () => console.log('VideoPlayer UNMOUNTED');
-    }, []);
+    }, [videoUrl, cookies]);
 
     const handleLoadStart = () => {
         setLoading(true);
@@ -92,8 +96,10 @@ const CustomVideoPlayer: React.FC<CustomVideoPlayerProps> = ({
     };
 
     const handleError = (err: any) => {
-        console.error('Video error:', err);
-        setError('Failed to load video. Please try again.');
+        console.error('Video error details:', JSON.stringify(err, null, 2));
+        console.error('Video URL that failed:', videoUrl);
+        console.error('Cookies used:', cookies);
+        setError(`Failed to load video: ${err?.error?.errorString || 'Unknown error'}`);
         setLoading(false);
     };
 
@@ -350,6 +356,19 @@ const CustomVideoPlayer: React.FC<CustomVideoPlayerProps> = ({
                         },
                     ]}
                 >
+                    <TouchableOpacity
+                        onPress={() => {
+                            setIsLandscape(!isLandscape);
+                            showControlsTemporarily();
+                        }}
+                        style={styles.controlButton}
+                    >
+                        <Text style={styles.iconText}>🔄</Text>
+                        <Text style={styles.controlText}>
+                            {isLandscape ? 'Portrait' : 'Landscape'}
+                        </Text>
+                    </TouchableOpacity>
+
                     <TouchableOpacity
                         onPress={() => {
                             setResizeMode(prev =>

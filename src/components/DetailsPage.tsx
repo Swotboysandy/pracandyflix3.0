@@ -11,7 +11,7 @@ import {
     StatusBar,
     Alert,
 } from 'react-native';
-import { fetchMovieDetails, MovieDetails, Episode, SuggestedMovie, getStreamUrl } from '../services/api';
+import { fetchMovieDetails, MovieDetails, Episode, Season, SuggestedMovie, getStreamUrl } from '../services/api';
 
 interface DetailsPageProps {
     movieId: string;
@@ -29,6 +29,7 @@ const DetailsPage: React.FC<DetailsPageProps> = ({ movieId, onClose, onMoviePres
     const [loading, setLoading] = useState(true);
     const [selectedSeason, setSelectedSeason] = useState<string>('1');
     const [loadingStream, setLoadingStream] = useState(false);
+    const [loadingSeason, setLoadingSeason] = useState(false);
 
     useEffect(() => {
         const loadDetails = async () => {
@@ -76,6 +77,20 @@ const DetailsPage: React.FC<DetailsPageProps> = ({ movieId, onClose, onMoviePres
         }
     };
 
+    const handleSeasonPress = async (season: Season) => {
+        setLoadingSeason(true);
+        setSelectedSeason(season.s);
+        try {
+            const data = await fetchMovieDetails(season.id, isPrimeVideo, isHotstar);
+            if (data) {
+                setDetails(data);
+            }
+        } catch (error) {
+            console.error('Error loading season:', error);
+        } finally {
+            setLoadingSeason(false);
+        }
+    };
 
 
     if (loading) {
@@ -256,7 +271,8 @@ const DetailsPage: React.FC<DetailsPageProps> = ({ movieId, onClose, onMoviePres
                                             styles.seasonButton,
                                             selectedSeason === season.s && styles.seasonButtonActive,
                                         ]}
-                                        onPress={() => setSelectedSeason(season.s)}
+                                        onPress={() => handleSeasonPress(season)}
+                                        disabled={loadingSeason}
                                     >
                                         <Text
                                             style={[
@@ -272,9 +288,15 @@ const DetailsPage: React.FC<DetailsPageProps> = ({ movieId, onClose, onMoviePres
                         )}
 
                         {/* Episodes List */}
-                        <View style={styles.episodesList}>
-                            {details.episodes.filter(ep => ep !== null).map((episode, index) => renderEpisode(episode, index))}
-                        </View>
+                        {loadingSeason ? (
+                            <View style={{ paddingVertical: 20, alignItems: 'center' }}>
+                                <ActivityIndicator size="small" color="#E50914" />
+                            </View>
+                        ) : (
+                            <View style={styles.episodesList}>
+                                {details.episodes.filter(ep => ep !== null).map((episode, index) => renderEpisode(episode, index))}
+                            </View>
+                        )}
                     </View>
                 )}
 
