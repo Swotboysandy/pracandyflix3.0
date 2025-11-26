@@ -39,27 +39,27 @@ const Search: React.FC<SearchProps> = ({ onClose, onMoviePress }) => {
         };
     }, [query]);
 
-    const handleSearch = React.useCallback(async (text: string) => {
-        setLoading(true);
-        const movies = await searchMovies(text, selectedPlatform);
-        setResults(movies);
-        setLoading(false);
-    }, [selectedPlatform]);
-
     useEffect(() => {
         if (debouncedQuery.trim().length > 2) {
             handleSearch(debouncedQuery);
         } else {
             setResults([]);
         }
-    }, [debouncedQuery, handleSearch]);
+    }, [debouncedQuery]);
+
+    const handleSearch = async (text: string) => {
+        setLoading(true);
+        const movies = await searchMovies(text, selectedPlatform);
+        setResults(movies);
+        setLoading(false);
+    };
 
     // Re-search when platform changes
     useEffect(() => {
         if (debouncedQuery.trim().length > 2) {
             handleSearch(debouncedQuery);
         }
-    }, [selectedPlatform, debouncedQuery, handleSearch]);
+    }, [selectedPlatform]);
 
     const renderItem = ({ item }: { item: Movie }) => (
         <TouchableOpacity onPress={() => onMoviePress(item)} style={styles.itemContainer}>
@@ -75,9 +75,6 @@ const Search: React.FC<SearchProps> = ({ onClose, onMoviePress }) => {
     return (
         <View style={styles.container}>
             <View style={styles.header}>
-                <TouchableOpacity onPress={onClose} style={styles.backButton}>
-                    <Image source={{ uri: 'https://img.icons8.com/ios-filled/50/ffffff/left.png' }} style={styles.icon} />
-                </TouchableOpacity>
                 <View style={styles.searchBar}>
                     <Image source={{ uri: 'https://img.icons8.com/ios-filled/50/999999/search--v1.png' }} style={styles.searchIcon} />
                     <TextInput
@@ -150,10 +147,6 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         paddingHorizontal: 10,
         marginBottom: 10,
-    },
-    backButton: {
-        padding: 5,
-        marginRight: 5,
     },
     icon: {
         width: 24,

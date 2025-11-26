@@ -11,50 +11,55 @@ import {
     StatusBar,
     Alert,
 } from 'react-native';
-import { fetchMovieDetails, MovieDetails, Episode, Season, SuggestedMovie, getStreamUrl } from '../services/api';
+import { fetchMovieDetails, MovieDetails, Episode, SuggestedMovie, getStreamUrl } from '../services/api';
+import VideoPlayer from './VideoPlayer';
 
 interface DetailsPageProps {
     movieId: string;
     onClose: () => void;
     onMoviePress: (id: string) => void;
-    onPlay: (url: string, title: string, cookies: string) => void;
     isPrimeVideo?: boolean;
     isHotstar?: boolean;
 }
 
 const { width } = Dimensions.get('window');
 
-const DetailsPage: React.FC<DetailsPageProps> = ({ movieId, onClose, onMoviePress, onPlay, isPrimeVideo = false, isHotstar = false }) => {
+const DetailsPage: React.FC<DetailsPageProps> = ({ movieId, onClose, onMoviePress, isPrimeVideo = false, isHotstar = false }) => {
     const [details, setDetails] = useState<MovieDetails | null>(null);
     const [loading, setLoading] = useState(true);
     const [selectedSeason, setSelectedSeason] = useState<string>('1');
     const [loadingStream, setLoadingStream] = useState(false);
-    const [loadingSeason, setLoadingSeason] = useState(false);
+    const [videoStream, setVideoStream] = useState<{ url: string; cookies: string; title: string } | null>(null);
 
     useEffect(() => {
-        const loadDetails = async () => {
-            setLoading(true);
-            const data = await fetchMovieDetails(movieId, isPrimeVideo, isHotstar);
-            setDetails(data);
-            setLoading(false);
-        };
         loadDetails();
-    }, [movieId, isPrimeVideo, isHotstar]);
+    }, [movieId]);
+
+    const loadDetails = async () => {
+        setLoading(true);
+        const data = await fetchMovieDetails(movieId, isPrimeVideo, isHotstar);
+        setDetails(data);
+        setLoading(false);
+    };
 
     const handlePlayPress = async () => {
         if (!details) return;
-
+        
         setLoadingStream(true);
         try {
             const streamResult = await getStreamUrl(movieId, details.title, isPrimeVideo, isHotstar);
             setLoadingStream(false);
-
+            
             if (streamResult) {
-                onPlay(streamResult.url, details.title, streamResult.cookies);
+                setVideoStream({
+                    url: streamResult.url,
+                    cookies: streamResult.cookies,
+                    title: details.title,
+                });
             } else {
                 Alert.alert('Error', 'Failed to get stream URL');
             }
-        } catch {
+        } catch (error) {
             setLoadingStream(false);
             Alert.alert('Error', 'Failed to get stream URL');
         }
@@ -65,33 +70,37 @@ const DetailsPage: React.FC<DetailsPageProps> = ({ movieId, onClose, onMoviePres
         try {
             const streamResult = await getStreamUrl(episode.id, episode.t, isPrimeVideo, isHotstar);
             setLoadingStream(false);
-
+            
             if (streamResult) {
-                onPlay(streamResult.url, `${episode.s}:E${episode.ep} - ${episode.t}`, streamResult.cookies);
+                setVideoStream({
+                    url: streamResult.url,
+                    cookies: streamResult.cookies,
+                    title: `${episode.s}:E${episode.ep} - ${episode.t}`,
+                });
             } else {
                 Alert.alert('Error', 'Failed to get stream URL');
             }
-        } catch {
+        } catch (error) {
             setLoadingStream(false);
             Alert.alert('Error', 'Failed to get stream URL');
         }
     };
 
-    const handleSeasonPress = async (season: Season) => {
-        setLoadingSeason(true);
-        setSelectedSeason(season.s);
-        try {
-            const data = await fetchMovieDetails(season.id, isPrimeVideo, isHotstar);
-            if (data) {
-                setDetails(data);
-            }
-        } catch (error) {
-            console.error('Error loading season:', error);
-        } finally {
-            setLoadingSeason(false);
-        }
+    const handleCloseVideo = () => {
+        setVideoStream(null);
     };
 
+    // Show video player if video stream is available
+    if (videoStream) {
+        return (
+            <VideoPlayer
+                videoUrl={videoStream.url}
+                title={videoStream.title}
+                cookies={videoStream.cookies}
+                onClose={handleCloseVideo}
+            />
+        );
+    }
 
     if (loading) {
         return (
@@ -112,7 +121,7 @@ const DetailsPage: React.FC<DetailsPageProps> = ({ movieId, onClose, onMoviePres
         );
     }
 
-    const renderEpisode = (episode: Episode, _: number) => (
+    const renderEpisode = (episode: Episode, index: number) => (
         <TouchableOpacity key={episode.id} style={styles.episodeCard} onPress={() => handleEpisodePress(episode)}>
             <View style={styles.episodeNumber}>
                 <Text style={styles.episodeNumberText}>{episode.ep}</Text>
@@ -186,8 +195,8 @@ const DetailsPage: React.FC<DetailsPageProps> = ({ movieId, onClose, onMoviePres
 
                 {/* Action Buttons */}
                 <View style={styles.actionButtons}>
-                    <TouchableOpacity
-                        style={styles.playButton}
+                    <TouchableOpacity 
+                        style={styles.playButton} 
                         onPress={handlePlayPress}
                         disabled={loadingStream}
                     >
@@ -256,7 +265,7 @@ const DetailsPage: React.FC<DetailsPageProps> = ({ movieId, onClose, onMoviePres
                 {details.episodes && details.episodes.filter(ep => ep !== null).length > 0 && (
                     <View style={styles.episodesSection}>
                         <Text style={styles.sectionTitle}>Episodes</Text>
-
+                        
                         {/* Season Selector */}
                         {details.season && details.season.length > 1 && (
                             <ScrollView
@@ -271,8 +280,7 @@ const DetailsPage: React.FC<DetailsPageProps> = ({ movieId, onClose, onMoviePres
                                             styles.seasonButton,
                                             selectedSeason === season.s && styles.seasonButtonActive,
                                         ]}
-                                        onPress={() => handleSeasonPress(season)}
-                                        disabled={loadingSeason}
+                                        onPress={() => setSelectedSeason(season.s)}
                                     >
                                         <Text
                                             style={[
@@ -288,15 +296,9 @@ const DetailsPage: React.FC<DetailsPageProps> = ({ movieId, onClose, onMoviePres
                         )}
 
                         {/* Episodes List */}
-                        {loadingSeason ? (
-                            <View style={{ paddingVertical: 20, alignItems: 'center' }}>
-                                <ActivityIndicator size="small" color="#E50914" />
-                            </View>
-                        ) : (
-                            <View style={styles.episodesList}>
-                                {details.episodes.filter(ep => ep !== null).map((episode, index) => renderEpisode(episode, index))}
-                            </View>
-                        )}
+                        <View style={styles.episodesList}>
+                            {details.episodes.filter(ep => ep !== null).map((episode, index) => renderEpisode(episode, index))}
+                        </View>
                     </View>
                 )}
 
@@ -381,9 +383,6 @@ const styles = StyleSheet.create({
         fontSize: 28,
         fontWeight: 'bold',
         marginBottom: 10,
-        textShadowColor: 'rgba(0, 0, 0, 0.75)',
-        textShadowOffset: { width: -1, height: 1 },
-        textShadowRadius: 10,
     },
     metaInfo: {
         flexDirection: 'row',
@@ -434,9 +433,9 @@ const styles = StyleSheet.create({
     },
     playButton: {
         backgroundColor: '#fff',
-        paddingVertical: 12,
+        paddingVertical: 10,
         paddingHorizontal: 20,
-        borderRadius: 4,
+        borderRadius: 6,
         alignItems: 'center',
         justifyContent: 'center',
         flex: 1,
