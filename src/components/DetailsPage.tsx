@@ -10,6 +10,7 @@ import {
     Dimensions,
     StatusBar,
     Alert,
+    BackHandler,
 } from 'react-native';
 import { fetchMovieDetails, MovieDetails, Episode, SuggestedMovie, getStreamUrl } from '../services/api';
 import VideoPlayer from './VideoPlayer';
@@ -35,6 +36,18 @@ const DetailsPage: React.FC<DetailsPageProps> = ({ movieId, onClose, onMoviePres
         loadDetails();
     }, [movieId]);
 
+    useEffect(() => {
+        const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
+            if (videoStream) {
+                handleCloseVideo();
+                return true;
+            }
+            onClose();
+            return true;
+        });
+        return () => backHandler.remove();
+    }, [onClose, videoStream]);
+
     const loadDetails = async () => {
         setLoading(true);
         const data = await fetchMovieDetails(movieId, isPrimeVideo, isHotstar);
@@ -44,12 +57,12 @@ const DetailsPage: React.FC<DetailsPageProps> = ({ movieId, onClose, onMoviePres
 
     const handlePlayPress = async () => {
         if (!details) return;
-        
+
         setLoadingStream(true);
         try {
             const streamResult = await getStreamUrl(movieId, details.title, isPrimeVideo, isHotstar);
             setLoadingStream(false);
-            
+
             if (streamResult) {
                 setVideoStream({
                     url: streamResult.url,
@@ -70,7 +83,7 @@ const DetailsPage: React.FC<DetailsPageProps> = ({ movieId, onClose, onMoviePres
         try {
             const streamResult = await getStreamUrl(episode.id, episode.t, isPrimeVideo, isHotstar);
             setLoadingStream(false);
-            
+
             if (streamResult) {
                 setVideoStream({
                     url: streamResult.url,
@@ -195,8 +208,8 @@ const DetailsPage: React.FC<DetailsPageProps> = ({ movieId, onClose, onMoviePres
 
                 {/* Action Buttons */}
                 <View style={styles.actionButtons}>
-                    <TouchableOpacity 
-                        style={styles.playButton} 
+                    <TouchableOpacity
+                        style={styles.playButton}
                         onPress={handlePlayPress}
                         disabled={loadingStream}
                     >
@@ -265,7 +278,7 @@ const DetailsPage: React.FC<DetailsPageProps> = ({ movieId, onClose, onMoviePres
                 {details.episodes && details.episodes.filter(ep => ep !== null).length > 0 && (
                     <View style={styles.episodesSection}>
                         <Text style={styles.sectionTitle}>Episodes</Text>
-                        
+
                         {/* Season Selector */}
                         {details.season && details.season.length > 1 && (
                             <ScrollView

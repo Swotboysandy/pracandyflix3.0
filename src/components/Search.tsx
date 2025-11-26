@@ -8,7 +8,8 @@ import {
     TouchableOpacity,
     ActivityIndicator,
     Image,
-    Dimensions
+    Dimensions,
+    BackHandler
 } from 'react-native';
 import { searchMovies, Movie } from '../services/api';
 
@@ -38,6 +39,14 @@ const Search: React.FC<SearchProps> = ({ onClose, onMoviePress }) => {
             clearTimeout(handler);
         };
     }, [query]);
+
+    useEffect(() => {
+        const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
+            onClose();
+            return true;
+        });
+        return () => backHandler.remove();
+    }, [onClose]);
 
     useEffect(() => {
         if (debouncedQuery.trim().length > 2) {
