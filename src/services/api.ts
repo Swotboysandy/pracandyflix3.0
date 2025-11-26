@@ -17,7 +17,11 @@ const HOME_DATA_URL = 'https://net-cookie-kacj.vercel.app/api/data';
 
 export const fetchHomeData = async (): Promise<Section[]> => {
     try {
-        const response = await axios.get(HOME_DATA_URL);
+        const response = await axios.get(HOME_DATA_URL, {
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+            },
+        });
 
         if (response.data && response.data.success && response.data.data) {
             const sections: Section[] = response.data.data.map((category: any) => ({
@@ -110,7 +114,7 @@ export const fetchMovieDetails = async (id: string, isPrimeVideo: boolean = fals
         const baseUrl = 'https://net20.cc';
         let url: string;
         let referer: string;
-        
+
         if (isHotstar) {
             url = `${baseUrl}/hs/post.php?id=${id}&t=${time}`;
             referer = `${baseUrl}/hs/home`;
@@ -178,7 +182,7 @@ export const getStreamUrl = async (id: string, title: string = 'Movie', isPrimeV
         if (isHotstar) {
             const timestamp = Math.round(new Date().getTime() / 1000);
             const playlistUrl = `${streamBaseUrl}/hs/playlist.php?id=${id}&t=${timestamp}`;
-            
+
             console.log('Hotstar Playlist URL:', playlistUrl);
 
             const playlistResponse = await axios.get(playlistUrl, {
@@ -187,14 +191,14 @@ export const getStreamUrl = async (id: string, title: string = 'Movie', isPrimeV
                     'Referer': `${streamBaseUrl}/`,
                 },
             });
-            
+
             console.log('Hotstar Playlist response:', JSON.stringify(playlistResponse.data, null, 2));
 
             const data = playlistResponse.data?.[0];
-            
+
             if (data?.sources && data.sources.length > 0) {
                 let streamUrl = data.sources[0].file;
-                
+
                 // If it's a relative path, prepend the stream base URL
                 if (!streamUrl.startsWith('http')) {
                     streamUrl = streamBaseUrl + streamUrl;
@@ -205,10 +209,10 @@ export const getStreamUrl = async (id: string, title: string = 'Movie', isPrimeV
                 while (streamUrl.includes('//mobile')) {
                     streamUrl = streamUrl.replace('//mobile', '/mobile');
                 }
-                
+
                 console.log('Final Hotstar stream URL:', streamUrl);
                 console.log('Using cookies:', cookies);
-                
+
                 return {
                     url: streamUrl,
                     cookies: cookies,
@@ -223,7 +227,7 @@ export const getStreamUrl = async (id: string, title: string = 'Movie', isPrimeV
         if (isPrimeVideo) {
             const timestamp = Math.round(new Date().getTime() / 1000);
             const playlistUrl = `${streamBaseUrl}/pv/playlist.php?id=${id}&t=${timestamp}`;
-            
+
             console.log('PV Playlist URL:', playlistUrl);
 
             const playlistResponse = await axios.get(playlistUrl, {
@@ -232,14 +236,14 @@ export const getStreamUrl = async (id: string, title: string = 'Movie', isPrimeV
                     'Referer': `${streamBaseUrl}/`,
                 },
             });
-            
+
             console.log('PV Playlist response:', JSON.stringify(playlistResponse.data, null, 2));
 
             const data = playlistResponse.data?.[0];
-            
+
             if (data?.sources && data.sources.length > 0) {
                 let streamUrl = data.sources[0].file;
-                
+
                 // If it's a relative path, prepend the stream base URL
                 if (!streamUrl.startsWith('http')) {
                     streamUrl = streamBaseUrl + streamUrl;
@@ -250,10 +254,10 @@ export const getStreamUrl = async (id: string, title: string = 'Movie', isPrimeV
                 while (streamUrl.includes('//mobile')) {
                     streamUrl = streamUrl.replace('//mobile', '/mobile');
                 }
-                
+
                 console.log('Final PV stream URL:', streamUrl);
                 console.log('Using cookies:', cookies);
-                
+
                 return {
                     url: streamUrl,
                     cookies: cookies,
@@ -288,7 +292,7 @@ export const getStreamUrl = async (id: string, title: string = 'Movie', isPrimeV
         // 3. Make request to playlist.php with the h parameter
         const timestamp = Math.round(new Date().getTime() / 1000);
         const playlistUrl = `${streamBaseUrl}/playlist.php?id=${id}&t=${encodeURIComponent(title)}&tm=${timestamp}&h=${playResponse.data.h}`;
-        
+
         console.log('Playlist URL:', playlistUrl);
 
         const playlistResponse = await axios.get(playlistUrl, {
@@ -298,22 +302,22 @@ export const getStreamUrl = async (id: string, title: string = 'Movie', isPrimeV
                 'Origin': 'https://net51.cc',
             },
         });
-        
+
         console.log('Playlist response:', JSON.stringify(playlistResponse.data, null, 2));
 
         const data = playlistResponse.data?.[0];
-        
+
         if (data?.sources && data.sources.length > 0) {
             let streamUrl = data.sources[0].file;
-            
+
             // If it's a relative path, prepend the stream base URL
             if (!streamUrl.startsWith('http')) {
                 streamUrl = streamBaseUrl + streamUrl;
             }
-            
+
             console.log('Final stream URL:', streamUrl);
             console.log('Using cookies:', cookies);
-            
+
             return {
                 url: streamUrl,
                 cookies: cookies,
@@ -337,20 +341,20 @@ export const searchMovies = async (query: string, platform: 'netflix' | 'primevi
         // 2. Perform Search
         const time = Date.now();
         let finalUrl: string;
-        
+
         if (platform === 'hotstar') {
             // Use new Hotstar API endpoint
             finalUrl = `https://anshu-netmirror.hunternisha55.workers.dev/?q=${encodeURIComponent(query)}&cookie=${encodeURIComponent(cookie)}`;
         } else {
             const baseUrl = 'https://net51.cc';
             let searchPageUrl: string;
-            
+
             if (platform === 'primevideo') {
                 searchPageUrl = `${baseUrl}/pv/search.php?s=${encodeURIComponent(query)}&t=${time}`;
             } else {
                 searchPageUrl = `${baseUrl}/search.php?s=${encodeURIComponent(query)}&t=${time}`;
             }
-            
+
             finalUrl = `https://odd-cloud-1e14.hunternisha55.workers.dev/?url=${searchPageUrl}&cookie=${encodeURIComponent(cookie)}`;
         }
 
@@ -370,7 +374,7 @@ export const searchMovies = async (query: string, platform: 'netflix' | 'primevi
                 } else {
                     imageUrl = `https://img.nfmirrorcdn.top/poster/h/${item.id}.jpg`;
                 }
-                
+
                 return {
                     id: item.id,
                     title: item.t,
