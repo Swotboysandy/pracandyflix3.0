@@ -10,9 +10,7 @@ import {
 } from 'react-native';
 import Video, { VideoRef, SelectedTrack, SelectedTrackType } from 'react-native-video';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { TapGestureHandler } from 'react-native-gesture-handler';
-
-
+import { TapGestureHandler, State } from 'react-native-gesture-handler';
 
 interface CustomVideoPlayerProps {
     videoUrl: string;
@@ -33,16 +31,21 @@ const CustomVideoPlayer: React.FC<CustomVideoPlayerProps> = ({
     const [paused, setPaused] = useState(false);
     const [showControls, setShowControls] = useState(true);
     const [showSettings, setShowSettings] = useState(false);
-    const [activeTab, setActiveTab] = useState<'audio' | 'subtitle'>('audio');
+    const [activeTab, setActiveTab] = useState<'audio' | 'subtitle' | 'quality' | 'speed'>('audio');
     const [currentTime, setCurrentTime] = useState(0);
     const [duration, setDuration] = useState(0);
+    const [playbackRate, setPlaybackRate] = useState(1.0);
+    const [resizeMode, setResizeMode] = useState<'contain' | 'cover' | 'stretch'>('contain');
+    const [retryKey, setRetryKey] = useState(0);
     const controlsTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     // Track states
     const [audioTracks, setAudioTracks] = useState<any[]>([]);
     const [textTracks, setTextTracks] = useState<any[]>([]);
+    const [videoTracks, setVideoTracks] = useState<any[]>([]);
     const [selectedAudioTrackIndex, setSelectedAudioTrackIndex] = useState(0);
     const [selectedTextTrackIndex, setSelectedTextTrackIndex] = useState(1000);
+    const [selectedVideoTrackIndex, setSelectedVideoTrackIndex] = useState(-1); // -1 for auto
 
     const [selectedAudioTrack, setSelectedAudioTrack] = useState<SelectedTrack>({
         type: SelectedTrackType.INDEX,
@@ -53,9 +56,13 @@ const CustomVideoPlayer: React.FC<CustomVideoPlayerProps> = ({
         type: SelectedTrackType.DISABLED,
     });
 
+    const [selectedVideoTrack, setSelectedVideoTrack] = useState<any>({
+        type: 'auto',
+    });
+
     // Animated values
-    const controlsTranslateY = useRef(new Animated.Value(150)).current;
-    const controlsOpacity = useRef(new Animated.Value(0)).current;
+    const controlsTranslateY = useRef(new Animated.Value(0)).current;
+    const controlsOpacity = useRef(new Animated.Value(1)).current;
     const settingsTranslateY = useRef(new Animated.Value(1000)).current;
     const settingsOpacity = useRef(new Animated.Value(0)).current;
     const seekOpacity = useRef(new Animated.Value(0)).current;
@@ -67,49 +74,51 @@ const CustomVideoPlayer: React.FC<CustomVideoPlayerProps> = ({
     const singleTapRef = useRef(null);
 
     useEffect(() => {
-        console.log('VideoPlayer MOUNTED');
-        console.log('URL:', videoUrl);
-        console.log('Title:', title);
-        console.log('Cookies:', cookies);
         return () => console.log('VideoPlayer UNMOUNTED');
-    }, [videoUrl, title, cookies]);
+    }, []);
 
     const handleLoadStart = () => {
-        console.log('Video load started');
         setLoading(true);
+        setError(null);
     };
 
     const handleBuffer = (meta: any) => {
-        console.log('Video buffering:', meta);
-        // Ensure loading is shown while buffering if needed, though usually handled by onProgress/onLoad
+        // console.log('Video buffering:', meta);
     };
 
     const handleLoad = (data: any) => {
-        console.log('Video loaded successfully');
         setDuration(data.duration);
         setLoading(false);
     };
 
     const handleError = (err: any) => {
         console.error('Video error:', err);
-        console.error('Video error details:', JSON.stringify(err, null, 2));
-        setError('Failed to load video');
+        setError('Failed to load video. Please try again.');
         setLoading(false);
     };
 
+    const handleRetry = () => {
+        setRetryKey(prev => prev + 1);
+        setError(null);
+        setLoading(true);
+    };
+
     const handleAudioTracks = (data: any) => {
-        console.log('Audio tracks received:', data);
         if (data && data.audioTracks) {
-            console.log('Setting audio tracks:', data.audioTracks);
             setAudioTracks(data.audioTracks);
         }
     };
 
     const handleTextTracks = (data: any) => {
-        console.log('Text tracks received:', data);
         if (data && data.textTracks) {
-            console.log('Setting text tracks:', data.textTracks);
             setTextTracks(data.textTracks);
+        }
+    };
+
+    const handleVideoTracks = (data: any) => {
+        if (data && data.videoTracks) {
+            const sortedTracks = data.videoTracks.sort((a: any, b: any) => b.height - a.height);
+            setVideoTracks(sortedTracks);
         }
     };
 
@@ -194,7 +203,10 @@ const CustomVideoPlayer: React.FC<CustomVideoPlayerProps> = ({
                 <StatusBar hidden />
                 <View style={styles.errorContainer}>
                     <Text style={styles.errorText}>{error}</Text>
-                    <TouchableOpacity style={styles.retryButton} onPress={onClose}>
+                    <TouchableOpacity style={styles.retryButton} onPress={handleRetry}>
+                        <Text style={styles.retryButtonText}>Retry</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={[styles.retryButton, { marginTop: 10, backgroundColor: '#333' }]} onPress={onClose}>
                         <Text style={styles.retryButtonText}>Go Back</Text>
                     </TouchableOpacity>
                 </View>
@@ -218,6 +230,7 @@ const CustomVideoPlayer: React.FC<CustomVideoPlayerProps> = ({
 
             <View style={styles.videoContainer}>
                 <Video
+                    key={retryKey}
                     ref={playerRef}
                     source={{
                         uri: videoUrl,
@@ -230,6 +243,7 @@ const CustomVideoPlayer: React.FC<CustomVideoPlayerProps> = ({
                     }}
                     style={styles.video}
                     paused={paused}
+                    rate={playbackRate}
                     onLoadStart={handleLoadStart}
                     onBuffer={handleBuffer}
                     onLoad={handleLoad}
@@ -237,9 +251,11 @@ const CustomVideoPlayer: React.FC<CustomVideoPlayerProps> = ({
                     onProgress={handleProgress}
                     onAudioTracks={handleAudioTracks}
                     onTextTracks={handleTextTracks}
+                    onVideoTracks={handleVideoTracks}
                     selectedAudioTrack={selectedAudioTrack}
                     selectedTextTrack={selectedTextTrack}
-                    resizeMode="contain"
+                    selectedVideoTrack={selectedVideoTrack}
+                    resizeMode={resizeMode}
                     progressUpdateInterval={1000}
                 />
 
@@ -323,7 +339,7 @@ const CustomVideoPlayer: React.FC<CustomVideoPlayerProps> = ({
                 )}
             </View>
 
-            {/* Bottom controls for audio/subtitle */}
+            {/* Bottom controls */}
             {showControls && (
                 <Animated.View
                     style={[
@@ -336,7 +352,50 @@ const CustomVideoPlayer: React.FC<CustomVideoPlayerProps> = ({
                 >
                     <TouchableOpacity
                         onPress={() => {
-                            console.log('Audio button pressed, audioTracks:', audioTracks);
+                            setResizeMode(prev =>
+                                prev === 'contain' ? 'cover' :
+                                    prev === 'cover' ? 'stretch' : 'contain'
+                            );
+                            showControlsTemporarily();
+                        }}
+                        style={styles.controlButton}
+                    >
+                        <Text style={styles.iconText}>⛶</Text>
+                        <Text style={styles.controlText}>
+                            {resizeMode}
+                        </Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                        onPress={() => {
+                            setActiveTab('speed');
+                            setShowSettings(!showSettings);
+                            showControlsTemporarily();
+                        }}
+                        style={styles.controlButton}
+                    >
+                        <Text style={styles.iconText}>⚡</Text>
+                        <Text style={styles.controlText}>
+                            {playbackRate}x
+                        </Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                        onPress={() => {
+                            setActiveTab('quality');
+                            setShowSettings(!showSettings);
+                            showControlsTemporarily();
+                        }}
+                        style={styles.controlButton}
+                    >
+                        <Text style={styles.iconText}>ᴴᴰ</Text>
+                        <Text style={styles.controlText}>
+                            {selectedVideoTrackIndex === -1 ? 'Auto' : `${videoTracks[selectedVideoTrackIndex]?.height}p`}
+                        </Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                        onPress={() => {
                             setActiveTab('audio');
                             setShowSettings(!showSettings);
                             showControlsTemporarily();
@@ -345,13 +404,12 @@ const CustomVideoPlayer: React.FC<CustomVideoPlayerProps> = ({
                     >
                         <Text style={styles.iconText}>🔊</Text>
                         <Text style={styles.controlText}>
-                            {audioTracks[selectedAudioTrackIndex]?.language || 'auto'}
+                            {audioTracks[selectedAudioTrackIndex]?.language || 'Audio'}
                         </Text>
                     </TouchableOpacity>
 
                     <TouchableOpacity
                         onPress={() => {
-                            console.log('Subtitle button pressed, textTracks:', textTracks);
                             setActiveTab('subtitle');
                             setShowSettings(!showSettings);
                             showControlsTemporarily();
@@ -360,7 +418,7 @@ const CustomVideoPlayer: React.FC<CustomVideoPlayerProps> = ({
                     >
                         <Text style={styles.iconText}>CC</Text>
                         <Text style={styles.controlText}>
-                            {selectedTextTrackIndex === 1000 ? 'none' : textTracks[selectedTextTrackIndex]?.language}
+                            {selectedTextTrackIndex === 1000 ? 'Off' : textTracks[selectedTextTrackIndex]?.language || 'Sub'}
                         </Text>
                     </TouchableOpacity>
                 </Animated.View>
@@ -382,12 +440,95 @@ const CustomVideoPlayer: React.FC<CustomVideoPlayerProps> = ({
                         style={styles.settingsContainer}
                         onTouchEnd={(e) => e.stopPropagation()}
                     >
+                        {/* Speed Tab */}
+                        {activeTab === 'speed' && (
+                            <View style={styles.settingsContent}>
+                                <Text style={styles.settingsTitle}>Playback Speed</Text>
+                                {[0.5, 1.0, 1.25, 1.5, 2.0].map((rate) => (
+                                    <TouchableOpacity
+                                        key={rate}
+                                        style={styles.trackItem}
+                                        onPress={() => {
+                                            setPlaybackRate(rate);
+                                            setShowSettings(false);
+                                        }}
+                                    >
+                                        <Text style={[
+                                            styles.trackText,
+                                            playbackRate === rate && styles.selectedTrackText
+                                        ]}>
+                                            {rate}x
+                                        </Text>
+                                        {playbackRate === rate && (
+                                            <Text style={styles.checkmark}>✓</Text>
+                                        )}
+                                    </TouchableOpacity>
+                                ))}
+                            </View>
+                        )}
+
+                        {/* Quality Tab */}
+                        {activeTab === 'quality' && (
+                            <View style={styles.settingsContent}>
+                                <Text style={styles.settingsTitle}>Quality</Text>
+                                <TouchableOpacity
+                                    style={styles.trackItem}
+                                    onPress={() => {
+                                        setSelectedVideoTrack({
+                                            type: 'auto',
+                                        });
+                                        setSelectedVideoTrackIndex(-1);
+                                        setShowSettings(false);
+                                    }}
+                                >
+                                    <Text style={[
+                                        styles.trackText,
+                                        selectedVideoTrackIndex === -1 && styles.selectedTrackText
+                                    ]}>
+                                        Auto
+                                    </Text>
+                                    {selectedVideoTrackIndex === -1 && (
+                                        <Text style={styles.checkmark}>✓</Text>
+                                    )}
+                                </TouchableOpacity>
+                                {videoTracks.map((track, i) => (
+                                    <TouchableOpacity
+                                        key={i}
+                                        style={styles.trackItem}
+                                        onPress={() => {
+                                            setSelectedVideoTrack({
+                                                type: 'index',
+                                                value: i,
+                                            });
+                                            setSelectedVideoTrackIndex(i);
+                                            setShowSettings(false);
+                                        }}
+                                    >
+                                        <Text style={[
+                                            styles.trackText,
+                                            selectedVideoTrackIndex === i && styles.selectedTrackText
+                                        ]}>
+                                            {track.height ? `${track.height}p` : `Quality ${i + 1}`}
+                                        </Text>
+                                        {track.bitrate && (
+                                            <Text style={styles.trackSubtext}>
+                                                {Math.round(track.bitrate / 1000)} kbps
+                                            </Text>
+                                        )}
+                                        {selectedVideoTrackIndex === i && (
+                                            <Text style={styles.checkmark}>✓</Text>
+                                        )}
+                                    </TouchableOpacity>
+                                ))}
+                            </View>
+                        )}
+
                         {/* Audio Tab */}
                         {activeTab === 'audio' && (
                             <View style={styles.settingsContent}>
                                 <Text style={styles.settingsTitle}>Audio</Text>
                                 {audioTracks.length === 0 ? (
-                                    <Text style={styles.noTracksText}>Loading audio tracks...</Text>
+                                    <Text style={styles.noTracksText}>No audio tracks available</Text>
                                 ) : (
                                     audioTracks.map((track, i) => (
                                         <TouchableOpacity
@@ -408,14 +549,6 @@ const CustomVideoPlayer: React.FC<CustomVideoPlayerProps> = ({
                                             ]}>
                                                 {track.language || `Track ${i + 1}`}
                                             </Text>
-                                            {track.title && (
-                                                <Text style={[
-                                                    styles.trackSubtext,
-                                                    selectedAudioTrackIndex === i && styles.selectedTrackText
-                                                ]}>
-                                                    {track.title}
-                                                </Text>
-                                            )}
                                             {selectedAudioTrackIndex === i && (
                                                 <Text style={styles.checkmark}>✓</Text>
                                             )}
@@ -443,7 +576,7 @@ const CustomVideoPlayer: React.FC<CustomVideoPlayerProps> = ({
                                         styles.trackText,
                                         selectedTextTrackIndex === 1000 && styles.selectedTrackText
                                     ]}>
-                                        None
+                                        Off
                                     </Text>
                                     {selectedTextTrackIndex === 1000 && (
                                         <Text style={styles.checkmark}>✓</Text>
@@ -468,14 +601,6 @@ const CustomVideoPlayer: React.FC<CustomVideoPlayerProps> = ({
                                         ]}>
                                             {track.language || `Subtitle ${i + 1}`}
                                         </Text>
-                                        {track.title && (
-                                            <Text style={[
-                                                styles.trackSubtext,
-                                                selectedTextTrackIndex === i && styles.selectedTrackText
-                                            ]}>
-                                                {track.title}
-                                            </Text>
-                                        )}
                                         {selectedTextTrackIndex === i && (
                                             <Text style={styles.checkmark}>✓</Text>
                                         )}
