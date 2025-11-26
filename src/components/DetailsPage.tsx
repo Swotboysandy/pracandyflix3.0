@@ -12,54 +12,48 @@ import {
     Alert,
 } from 'react-native';
 import { fetchMovieDetails, MovieDetails, Episode, SuggestedMovie, getStreamUrl } from '../services/api';
-import VideoPlayer from './VideoPlayer';
 
 interface DetailsPageProps {
     movieId: string;
     onClose: () => void;
     onMoviePress: (id: string) => void;
+    onPlay: (url: string, title: string, cookies: string) => void;
     isPrimeVideo?: boolean;
     isHotstar?: boolean;
 }
 
 const { width } = Dimensions.get('window');
 
-const DetailsPage: React.FC<DetailsPageProps> = ({ movieId, onClose, onMoviePress, isPrimeVideo = false, isHotstar = false }) => {
+const DetailsPage: React.FC<DetailsPageProps> = ({ movieId, onClose, onMoviePress, onPlay, isPrimeVideo = false, isHotstar = false }) => {
     const [details, setDetails] = useState<MovieDetails | null>(null);
     const [loading, setLoading] = useState(true);
     const [selectedSeason, setSelectedSeason] = useState<string>('1');
     const [loadingStream, setLoadingStream] = useState(false);
-    const [videoStream, setVideoStream] = useState<{ url: string; cookies: string; title: string } | null>(null);
 
     useEffect(() => {
+        const loadDetails = async () => {
+            setLoading(true);
+            const data = await fetchMovieDetails(movieId, isPrimeVideo, isHotstar);
+            setDetails(data);
+            setLoading(false);
+        };
         loadDetails();
-    }, [movieId]);
-
-    const loadDetails = async () => {
-        setLoading(true);
-        const data = await fetchMovieDetails(movieId, isPrimeVideo, isHotstar);
-        setDetails(data);
-        setLoading(false);
-    };
+    }, [movieId, isPrimeVideo, isHotstar]);
 
     const handlePlayPress = async () => {
         if (!details) return;
-        
+
         setLoadingStream(true);
         try {
             const streamResult = await getStreamUrl(movieId, details.title, isPrimeVideo, isHotstar);
             setLoadingStream(false);
-            
+
             if (streamResult) {
-                setVideoStream({
-                    url: streamResult.url,
-                    cookies: streamResult.cookies,
-                    title: details.title,
-                });
+                onPlay(streamResult.url, details.title, streamResult.cookies);
             } else {
                 Alert.alert('Error', 'Failed to get stream URL');
             }
-        } catch (error) {
+        } catch {
             setLoadingStream(false);
             Alert.alert('Error', 'Failed to get stream URL');
         }
@@ -70,37 +64,19 @@ const DetailsPage: React.FC<DetailsPageProps> = ({ movieId, onClose, onMoviePres
         try {
             const streamResult = await getStreamUrl(episode.id, episode.t, isPrimeVideo, isHotstar);
             setLoadingStream(false);
-            
+
             if (streamResult) {
-                setVideoStream({
-                    url: streamResult.url,
-                    cookies: streamResult.cookies,
-                    title: `${episode.s}:E${episode.ep} - ${episode.t}`,
-                });
+                onPlay(streamResult.url, `${episode.s}:E${episode.ep} - ${episode.t}`, streamResult.cookies);
             } else {
                 Alert.alert('Error', 'Failed to get stream URL');
             }
-        } catch (error) {
+        } catch {
             setLoadingStream(false);
             Alert.alert('Error', 'Failed to get stream URL');
         }
     };
 
-    const handleCloseVideo = () => {
-        setVideoStream(null);
-    };
 
-    // Show video player if video stream is available
-    if (videoStream) {
-        return (
-            <VideoPlayer
-                videoUrl={videoStream.url}
-                title={videoStream.title}
-                cookies={videoStream.cookies}
-                onClose={handleCloseVideo}
-            />
-        );
-    }
 
     if (loading) {
         return (
@@ -121,7 +97,7 @@ const DetailsPage: React.FC<DetailsPageProps> = ({ movieId, onClose, onMoviePres
         );
     }
 
-    const renderEpisode = (episode: Episode, index: number) => (
+    const renderEpisode = (episode: Episode, _: number) => (
         <TouchableOpacity key={episode.id} style={styles.episodeCard} onPress={() => handleEpisodePress(episode)}>
             <View style={styles.episodeNumber}>
                 <Text style={styles.episodeNumberText}>{episode.ep}</Text>
@@ -195,8 +171,8 @@ const DetailsPage: React.FC<DetailsPageProps> = ({ movieId, onClose, onMoviePres
 
                 {/* Action Buttons */}
                 <View style={styles.actionButtons}>
-                    <TouchableOpacity 
-                        style={styles.playButton} 
+                    <TouchableOpacity
+                        style={styles.playButton}
                         onPress={handlePlayPress}
                         disabled={loadingStream}
                     >
@@ -265,7 +241,7 @@ const DetailsPage: React.FC<DetailsPageProps> = ({ movieId, onClose, onMoviePres
                 {details.episodes && details.episodes.filter(ep => ep !== null).length > 0 && (
                     <View style={styles.episodesSection}>
                         <Text style={styles.sectionTitle}>Episodes</Text>
-                        
+
                         {/* Season Selector */}
                         {details.season && details.season.length > 1 && (
                             <ScrollView
@@ -383,6 +359,9 @@ const styles = StyleSheet.create({
         fontSize: 28,
         fontWeight: 'bold',
         marginBottom: 10,
+        textShadowColor: 'rgba(0, 0, 0, 0.75)',
+        textShadowOffset: { width: -1, height: 1 },
+        textShadowRadius: 10,
     },
     metaInfo: {
         flexDirection: 'row',
@@ -433,9 +412,9 @@ const styles = StyleSheet.create({
     },
     playButton: {
         backgroundColor: '#fff',
-        paddingVertical: 10,
+        paddingVertical: 12,
         paddingHorizontal: 20,
-        borderRadius: 6,
+        borderRadius: 4,
         alignItems: 'center',
         justifyContent: 'center',
         flex: 1,

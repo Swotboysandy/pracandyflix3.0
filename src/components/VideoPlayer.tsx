@@ -7,12 +7,12 @@ import {
     StatusBar,
     ActivityIndicator,
     Animated,
-    Dimensions,
 } from 'react-native';
 import Video, { VideoRef, SelectedTrack, SelectedTrackType } from 'react-native-video';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { TapGestureHandler } from 'react-native-gesture-handler';
 
-const { width, height } = Dimensions.get('window');
+
 
 interface CustomVideoPlayerProps {
     videoUrl: string;
@@ -21,11 +21,11 @@ interface CustomVideoPlayerProps {
     onClose: () => void;
 }
 
-const CustomVideoPlayer: React.FC<CustomVideoPlayerProps> = ({ 
-    videoUrl, 
-    title, 
-    cookies, 
-    onClose 
+const CustomVideoPlayer: React.FC<CustomVideoPlayerProps> = ({
+    videoUrl,
+    title,
+    cookies,
+    onClose
 }) => {
     const playerRef = useRef<VideoRef | null>(null);
     const [loading, setLoading] = useState(true);
@@ -37,18 +37,18 @@ const CustomVideoPlayer: React.FC<CustomVideoPlayerProps> = ({
     const [currentTime, setCurrentTime] = useState(0);
     const [duration, setDuration] = useState(0);
     const controlsTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-    
+
     // Track states
     const [audioTracks, setAudioTracks] = useState<any[]>([]);
     const [textTracks, setTextTracks] = useState<any[]>([]);
     const [selectedAudioTrackIndex, setSelectedAudioTrackIndex] = useState(0);
     const [selectedTextTrackIndex, setSelectedTextTrackIndex] = useState(1000);
-    
+
     const [selectedAudioTrack, setSelectedAudioTrack] = useState<SelectedTrack>({
         type: SelectedTrackType.INDEX,
         value: 0,
     });
-    
+
     const [selectedTextTrack, setSelectedTextTrack] = useState<SelectedTrack>({
         type: SelectedTrackType.DISABLED,
     });
@@ -58,11 +58,31 @@ const CustomVideoPlayer: React.FC<CustomVideoPlayerProps> = ({
     const controlsOpacity = useRef(new Animated.Value(0)).current;
     const settingsTranslateY = useRef(new Animated.Value(1000)).current;
     const settingsOpacity = useRef(new Animated.Value(0)).current;
+    const seekOpacity = useRef(new Animated.Value(0)).current;
 
-    console.log('VideoPlayer initialized with:');
-    console.log('URL:', videoUrl);
-    console.log('Title:', title);
-    console.log('Cookies:', cookies);
+    const [seekFeedback, setSeekFeedback] = useState<'forward' | 'backward' | null>(null);
+
+    const doubleTapLeftRef = useRef(null);
+    const doubleTapRightRef = useRef(null);
+    const singleTapRef = useRef(null);
+
+    useEffect(() => {
+        console.log('VideoPlayer MOUNTED');
+        console.log('URL:', videoUrl);
+        console.log('Title:', title);
+        console.log('Cookies:', cookies);
+        return () => console.log('VideoPlayer UNMOUNTED');
+    }, [videoUrl, title, cookies]);
+
+    const handleLoadStart = () => {
+        console.log('Video load started');
+        setLoading(true);
+    };
+
+    const handleBuffer = (meta: any) => {
+        console.log('Video buffering:', meta);
+        // Ensure loading is shown while buffering if needed, though usually handled by onProgress/onLoad
+    };
 
     const handleLoad = (data: any) => {
         console.log('Video loaded successfully');
@@ -112,6 +132,22 @@ const CustomVideoPlayer: React.FC<CustomVideoPlayerProps> = ({
         }, 3000);
     };
 
+    const handleDoubleTap = (direction: 'forward' | 'backward') => {
+        const seekTime = direction === 'forward' ? 10 : -10;
+        const newTime = currentTime + seekTime;
+        if (playerRef.current) {
+            playerRef.current.seek(newTime);
+        }
+
+        setSeekFeedback(direction);
+        seekOpacity.setValue(1);
+        Animated.sequence([
+            Animated.timing(seekOpacity, { toValue: 1, duration: 200, useNativeDriver: true }),
+            Animated.delay(500),
+            Animated.timing(seekOpacity, { toValue: 0, duration: 200, useNativeDriver: true }),
+        ]).start(() => setSeekFeedback(null));
+    };
+
     const formatTime = (seconds: number) => {
         const hrs = Math.floor(seconds / 3600);
         const mins = Math.floor((seconds % 3600) / 60);
@@ -135,13 +171,9 @@ const CustomVideoPlayer: React.FC<CustomVideoPlayerProps> = ({
                 useNativeDriver: true,
             }),
         ]).start();
-    }, [showControls]);
+    }, [showControls, controlsTranslateY, controlsOpacity]);
 
     useEffect(() => {
-        console.log('showSettings changed:', showSettings);
-        console.log('activeTab:', activeTab);
-        console.log('audioTracks count:', audioTracks.length);
-        console.log('textTracks count:', textTracks.length);
         Animated.parallel([
             Animated.timing(settingsTranslateY, {
                 toValue: showSettings ? 0 : 1000,
@@ -154,7 +186,7 @@ const CustomVideoPlayer: React.FC<CustomVideoPlayerProps> = ({
                 useNativeDriver: true,
             }),
         ]).start();
-    }, [showSettings]);
+    }, [showSettings, settingsTranslateY, settingsOpacity]);
 
     if (error) {
         return (
@@ -171,12 +203,12 @@ const CustomVideoPlayer: React.FC<CustomVideoPlayerProps> = ({
     }
 
     return (
-        <SafeAreaView 
+        <SafeAreaView
             style={styles.container}
             edges={['top', 'bottom', 'left', 'right']}
         >
             <StatusBar hidden />
-            
+
             {loading && (
                 <View style={styles.loadingContainer}>
                     <ActivityIndicator size="large" color="#E50914" />
@@ -184,11 +216,7 @@ const CustomVideoPlayer: React.FC<CustomVideoPlayerProps> = ({
                 </View>
             )}
 
-            <TouchableOpacity 
-                style={styles.videoContainer} 
-                activeOpacity={1}
-                onPress={showControlsTemporarily}
-            >
+            <View style={styles.videoContainer}>
                 <Video
                     ref={playerRef}
                     source={{
@@ -202,6 +230,8 @@ const CustomVideoPlayer: React.FC<CustomVideoPlayerProps> = ({
                     }}
                     style={styles.video}
                     paused={paused}
+                    onLoadStart={handleLoadStart}
+                    onBuffer={handleBuffer}
                     onLoad={handleLoad}
                     onError={handleError}
                     onProgress={handleProgress}
@@ -213,9 +243,50 @@ const CustomVideoPlayer: React.FC<CustomVideoPlayerProps> = ({
                     progressUpdateInterval={1000}
                 />
 
+                {/* Gestures Layer */}
+                <TapGestureHandler
+                    ref={singleTapRef}
+                    onActivated={showControlsTemporarily}
+                    waitFor={[doubleTapLeftRef, doubleTapRightRef]}
+                >
+                    <View style={styles.gestureContainer}>
+                        <TapGestureHandler
+                            ref={doubleTapLeftRef}
+                            numberOfTaps={2}
+                            onActivated={() => handleDoubleTap('backward')}
+                        >
+                            <View style={styles.gestureSide} />
+                        </TapGestureHandler>
+
+                        <View style={styles.gestureCenter} />
+
+                        <TapGestureHandler
+                            ref={doubleTapRightRef}
+                            numberOfTaps={2}
+                            onActivated={() => handleDoubleTap('forward')}
+                        >
+                            <View style={styles.gestureSide} />
+                        </TapGestureHandler>
+                    </View>
+                </TapGestureHandler>
+
+                {/* Seek Feedback */}
+                {seekFeedback && (
+                    <View style={[
+                        styles.feedbackContainer,
+                        seekFeedback === 'forward' ? styles.feedbackRight : styles.feedbackLeft
+                    ]}>
+                        <Animated.View style={{ opacity: seekOpacity }}>
+                            <Text style={styles.feedbackText}>
+                                {seekFeedback === 'forward' ? '▶▶ +10s' : '◀◀ -10s'}
+                            </Text>
+                        </Animated.View>
+                    </View>
+                )}
+
                 {/* Play/Pause Button */}
                 {showControls && (
-                    <TouchableOpacity 
+                    <TouchableOpacity
                         style={styles.playPauseButton}
                         onPress={togglePlayPause}
                     >
@@ -237,11 +308,11 @@ const CustomVideoPlayer: React.FC<CustomVideoPlayerProps> = ({
                 {showControls && (
                     <View style={styles.progressContainer}>
                         <View style={styles.progressBar}>
-                            <View 
+                            <View
                                 style={[
-                                    styles.progressFilled, 
+                                    styles.progressFilled,
                                     { width: `${duration > 0 ? (currentTime / duration) * 100 : 0}%` }
-                                ]} 
+                                ]}
                             />
                         </View>
                         <View style={styles.timeContainer}>
@@ -250,7 +321,7 @@ const CustomVideoPlayer: React.FC<CustomVideoPlayerProps> = ({
                         </View>
                     </View>
                 )}
-            </TouchableOpacity>
+            </View>
 
             {/* Bottom controls for audio/subtitle */}
             {showControls && (
@@ -638,6 +709,43 @@ const styles = StyleSheet.create({
     checkmark: {
         color: '#E50914',
         fontSize: 20,
+        fontWeight: 'bold',
+    },
+    gestureContainer: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        flexDirection: 'row',
+        zIndex: 10,
+    },
+    gestureSide: {
+        flex: 0.4,
+        height: '100%',
+    },
+    gestureCenter: {
+        flex: 0.2,
+        height: '100%',
+    },
+    feedbackContainer: {
+        position: 'absolute',
+        top: '50%',
+        marginTop: -30,
+        zIndex: 20,
+        backgroundColor: 'rgba(0,0,0,0.7)',
+        padding: 15,
+        borderRadius: 30,
+    },
+    feedbackLeft: {
+        left: '20%',
+    },
+    feedbackRight: {
+        right: '20%',
+    },
+    feedbackText: {
+        color: '#fff',
+        fontSize: 16,
         fontWeight: 'bold',
     },
 });

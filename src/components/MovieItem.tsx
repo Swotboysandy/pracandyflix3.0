@@ -1,5 +1,5 @@
 import React from 'react';
-import { TouchableOpacity, Image, StyleSheet, Dimensions } from 'react-native';
+import { TouchableOpacity, Image, StyleSheet, Dimensions, Animated, TouchableWithoutFeedback } from 'react-native';
 import { Movie } from '../services/api';
 
 interface MovieItemProps {
@@ -11,9 +11,27 @@ interface MovieItemProps {
 const { width } = Dimensions.get('window');
 
 const MovieItem: React.FC<MovieItemProps> = ({ movie, onPress, isHero }) => {
+    const scale = React.useRef(new Animated.Value(1)).current;
+
+    const handlePressIn = () => {
+        Animated.spring(scale, {
+            toValue: 0.95,
+            useNativeDriver: true,
+            speed: 20,
+        }).start();
+    };
+
+    const handlePressOut = () => {
+        Animated.spring(scale, {
+            toValue: 1,
+            useNativeDriver: true,
+            speed: 20,
+        }).start();
+    };
+
     if (isHero) {
         return (
-            <TouchableOpacity onPress={() => onPress(movie)} style={styles.heroContainer}>
+            <TouchableOpacity onPress={() => onPress(movie)} style={styles.heroContainer} activeOpacity={0.9}>
                 <Image
                     source={{ uri: movie.imageUrl }}
                     style={styles.heroImage}
@@ -24,13 +42,19 @@ const MovieItem: React.FC<MovieItemProps> = ({ movie, onPress, isHero }) => {
     }
 
     return (
-        <TouchableOpacity onPress={() => onPress(movie)} style={styles.container}>
-            <Image
-                source={{ uri: movie.imageUrl }}
-                style={styles.image}
-                resizeMode="cover"
-            />
-        </TouchableOpacity>
+        <TouchableWithoutFeedback
+            onPress={() => onPress(movie)}
+            onPressIn={handlePressIn}
+            onPressOut={handlePressOut}
+        >
+            <Animated.View style={[styles.container, { transform: [{ scale }] }]}>
+                <Image
+                    source={{ uri: movie.imageUrl }}
+                    style={styles.image}
+                    resizeMode="cover"
+                />
+            </Animated.View>
+        </TouchableWithoutFeedback>
     );
 };
 
