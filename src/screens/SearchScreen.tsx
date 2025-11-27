@@ -1,14 +1,13 @@
 import React from 'react';
-import { StackScreenProps } from '@react-navigation/stack';
-import { RootStackParamList } from '../navigation/types';
+import { useNavigation } from '@react-navigation/native';
 import Search from '../components/Search';
 
-type Props = StackScreenProps<RootStackParamList, 'Search'>;
+const SearchScreen = () => {
+    const navigation = useNavigation<any>();
 
-const SearchScreen: React.FC<Props> = ({ navigation }) => {
     return (
         <Search
-            onClose={() => navigation.goBack()}
+            onClose={navigation.canGoBack() ? () => navigation.goBack() : undefined}
             onMoviePress={(movie) => {
                 navigation.navigate('Details', {
                     movieId: movie.id,

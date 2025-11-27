@@ -1,0 +1,185 @@
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/9.0.0/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build 
+> Task :gradle-plugin:settings-plugin:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :gradle-plugin:shared:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :gradle-plugin:shared:compileKotlin UP-TO-DATE
+> Task :gradle-plugin:shared:compileJava NO-SOURCE
+> Task :gradle-plugin:shared:processResources NO-SOURCE
+> Task :gradle-plugin:shared:classes UP-TO-DATE
+> Task :gradle-plugin:shared:jar UP-TO-DATE
+> Task :gradle-plugin:settings-plugin:compileKotlin UP-TO-DATE
+> Task :gradle-plugin:settings-plugin:compileJava NO-SOURCE
+> Task :gradle-plugin:settings-plugin:pluginDescriptors UP-TO-DATE
+> Task :gradle-plugin:settings-plugin:processResources UP-TO-DATE
+> Task :gradle-plugin:settings-plugin:classes UP-TO-DATE
+> Task :gradle-plugin:settings-plugin:jar UP-TO-DATE
+> Task :gradle-plugin:react-native-gradle-plugin:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :gradle-plugin:react-native-gradle-plugin:compileKotlin UP-TO-DATE
+> Task :gradle-plugin:react-native-gradle-plugin:compileJava NO-SOURCE
+> Task :gradle-plugin:react-native-gradle-plugin:pluginDescriptors UP-TO-DATE
+> Task :gradle-plugin:react-native-gradle-plugin:processResources UP-TO-DATE
+> Task :gradle-plugin:react-native-gradle-plugin:classes UP-TO-DATE
+> Task :gradle-plugin:react-native-gradle-plugin:jar UP-TO-DATE
+
+> Configure project :react-native-video
+Kotlin version is correct: 2.1.20
+AndroidX version is correct: 1.9.3
+useExoplayerIMA: false
+useExoplayerSmoothStreaming: true
+useExoplayerDash: true
+useExoplayerHls: true
+useExoplayerRtsp: false
+buildFromSource: false
+
+> Task :app:generateAutolinkingNewArchitectureFiles UP-TO-DATE
+> Task :app:generateAutolinkingPackageList UP-TO-DATE
+> Task :app:generateCodegenSchemaFromJavaScript SKIPPED
+> Task :app:generateCodegenArtifactsFromSchema SKIPPED
+> Task :app:generateReactNativeEntryPoint UP-TO-DATE
+> Task :lottie-react-native:generateCodegenSchemaFromJavaScript UP-TO-DATE
+> Task :lottie-react-native:generateCodegenArtifactsFromSchema UP-TO-DATE
+> Task :lottie-react-native:preBuild UP-TO-DATE
+> Task :react-native-community_slider:generateCodegenSchemaFromJavaScript UP-TO-DATE
+> Task :react-native-community_slider:generateCodegenArtifactsFromSchema UP-TO-DATE
+> Task :react-native-community_slider:preBuild UP-TO-DATE
+> Task :react-native-gesture-handler:generateCodegenSchemaFromJavaScript UP-TO-DATE
+> Task :react-native-gesture-handler:generateCodegenArtifactsFromSchema UP-TO-DATE
+> Task :react-native-gesture-handler:preBuild UP-TO-DATE
+> Task :react-native-orientation-locker:preBuild UP-TO-DATE
+> Task :react-native-reanimated:assertMinimalReactNativeVersionTask
+> Task :react-native-reanimated:assertNewArchitectureEnabledTask SKIPPED
+> Task :react-native-reanimated:assertWorkletsVersionTask
+> Task :react-native-reanimated:generateCodegenSchemaFromJavaScript UP-TO-DATE
+> Task :react-native-reanimated:generateCodegenArtifactsFromSchema UP-TO-DATE
+> Task :react-native-reanimated:prepareReanimatedHeadersForPrefabs UP-TO-DATE
+> Task :react-native-reanimated:preBuild
+> Task :react-native-safe-area-context:generateCodegenSchemaFromJavaScript UP-TO-DATE
+> Task :react-native-safe-area-context:generateCodegenArtifactsFromSchema UP-TO-DATE
+> Task :react-native-safe-area-context:preBuild UP-TO-DATE
+> Task :react-native-svg:generateCodegenSchemaFromJavaScript UP-TO-DATE
+> Task :react-native-svg:generateCodegenArtifactsFromSchema UP-TO-DATE
+> Task :react-native-svg:preBuild UP-TO-DATE
+> Task :react-native-video:preBuild UP-TO-DATE
+> Task :react-native-worklets:assertMinimalReactNativeVersionTask
+> Task :react-native-worklets:assertNewArchitectureEnabledTask SKIPPED
+> Task :react-native-worklets:generateCodegenSchemaFromJavaScript UP-TO-DATE
+> Task :react-native-worklets:generateCodegenArtifactsFromSchema UP-TO-DATE
+> Task :react-native-worklets:prepareWorkletsHeadersForPrefabs UP-TO-DATE
+> Task :react-native-worklets:preBuild
+> Task :app:preBuild
+> Task :app:preReleaseBuild
+> Task :react-native-reanimated:preReleaseBuild
+> Task :react-native-worklets:preReleaseBuild
+> Task :react-native-worklets:configureCMakeRelWithDebInfo[arm64-v8a]
+> Task :react-native-worklets:configureCMakeRelWithDebInfo[armeabi-v7a]
+> Task :react-native-worklets:configureCMakeRelWithDebInfo[x86]
+> Task :react-native-worklets:configureCMakeRelWithDebInfo[x86_64]
+> Task :react-native-worklets:generateJsonModelRelease
+> Task :react-native-worklets:prefabReleaseConfigurePackage
+> Task :react-native-reanimated:configureCMakeRelWithDebInfo[arm64-v8a]
+> Task :react-native-reanimated:configureCMakeRelWithDebInfo[armeabi-v7a]
+> Task :react-native-reanimated:configureCMakeRelWithDebInfo[x86]
+> Task :react-native-reanimated:configureCMakeRelWithDebInfo[x86_64]
+> Task :react-native-reanimated:generateJsonModelRelease
+> Task :react-native-reanimated:prefabReleaseConfigurePackage
+
+> Task :app:configureCMakeRelWithDebInfo[arm64-v8a]
+C/C++: CMake Warning in F:/Sandy/S+Study/CODING/mov/netflix/node_modules/react-native-gesture-handler/android/build/generated/source/codegen/jni/CMakeLists.txt:
+C/C++:   The object file directory
+C/C++:     F:/Sandy/S+Study/CODING/mov/netflix/android/app/.cxx/RelWithDebInfo/29713i3p/arm64-v8a/rngesturehandler_codegen_autolinked_build/CMakeFiles/react_codegen_rngesturehandler_codegen.dir/./
+C/C++:   has 185 characters.  The maximum full path to an object file is 250
+C/C++:   characters (see CMAKE_OBJECT_PATH_MAX).  Object file
+C/C++:     react/renderer/components/rngesturehandler_codegen/rngesturehandler_codegenJSI-generated.cpp.o
+C/C++:   cannot be safely placed under this directory.  The build may not work
+C/C++:   correctly.
+
+> Task :react-native-worklets:buildCMakeRelWithDebInfo[arm64-v8a][worklets]
+C/C++: Hard link from 'C:\Users\sunny\.gradle\caches\9.0.0\transforms\fff4f781da2956e97673b83a5feea22e\transformed\react-android-0.82.1-release\prefab\modules\reactnative\libs\android.arm64-v8a\libreactnative.so' to 'F:\Sandy\S+Study\CODING\mov\netflix\node_modules\react-native-worklets\android\build\intermediates\cxx\RelWithDebInfo\5v234149\obj\arm64-v8a\libreactnative.so' failed. Doing a slower copy instead.
+C/C++: Hard link from 'C:\Users\sunny\.gradle\caches\9.0.0\transforms\fff4f781da2956e97673b83a5feea22e\transformed\react-android-0.82.1-release\prefab\modules\reactnative\libs\android.arm64-v8a\libreactnative.so' to 'F:\Sandy\S+Study\CODING\mov\netflix\node_modules\react-native-worklets\android\build\intermediates\cxx\RelWithDebInfo\5v234149\obj\arm64-v8a\libreactnative.so' failed. Doing a slower copy instead.
+
+> Task :react-native-worklets:buildCMakeRelWithDebInfo[armeabi-v7a][worklets]
+> Task :react-native-worklets:buildCMakeRelWithDebInfo[x86][worklets]
+> Task :react-native-worklets:buildCMakeRelWithDebInfo[x86_64][worklets]
+
+> Task :react-native-worklets:externalNativeBuildRelease
+C/C++: Hard link from 'C:\Users\sunny\.gradle\caches\9.0.0\transforms\fff4f781da2956e97673b83a5feea22e\transformed\react-android-0.82.1-release\prefab\modules\reactnative\libs\android.arm64-v8a\libreactnative.so' to 'F:\Sandy\S+Study\CODING\mov\netflix\node_modules\react-native-worklets\android\build\intermediates\cmake\release\obj\arm64-v8a\libreactnative.so' failed. Doing a slower copy instead.
+C/C++: Hard link from 'C:\Users\sunny\.gradle\caches\9.0.0\transforms\fff4f781da2956e97673b83a5feea22e\transformed\react-android-0.82.1-release\prefab\modules\reactnative\libs\android.arm64-v8a\libreactnative.so' to 'F:\Sandy\S+Study\CODING\mov\netflix\node_modules\react-native-worklets\android\build\intermediates\cmake\release\obj\arm64-v8a\libreactnative.so' failed. Doing a slower copy instead.
+
+> Task :react-native-worklets:prefabReleasePackage
+> Task :react-native-reanimated:buildCMakeRelWithDebInfo[arm64-v8a][reanimated]
+C/C++: Hard link from 'C:\Users\sunny\.gradle\caches\9.0.0\transforms\fff4f781da2956e97673b83a5feea22e\transformed\react-android-0.82.1-release\prefab\modules\reactnative\libs\android.arm64-v8a\libreactnative.so' to 'F:\Sandy\S+Study\CODING\mov\netflix\node_modules\react-native-reanimated\android\build\intermediates\cxx\RelWithDebInfo\535o113i\obj\arm64-v8a\libreactnative.so' failed. Doing a slower copy instead.
+C/C++: Hard link from 'C:\Users\sunny\.gradle\caches\9.0.0\transforms\fff4f781da2956e97673b83a5feea22e\transformed\react-android-0.82.1-release\prefab\modules\reactnative\libs\android.arm64-v8a\libreactnative.so' to 'F:\Sandy\S+Study\CODING\mov\netflix\node_modules\react-native-reanimated\android\build\intermediates\cxx\RelWithDebInfo\535o113i\obj\arm64-v8a\libreactnative.so' failed. Doing a slower copy instead.
+
+> Task :react-native-reanimated:buildCMakeRelWithDebInfo[armeabi-v7a][reanimated]
+> Task :react-native-reanimated:buildCMakeRelWithDebInfo[x86][reanimated]
+> Task :react-native-reanimated:buildCMakeRelWithDebInfo[x86_64][reanimated]
+> Task :react-native-worklets:mergeReleaseJniLibFolders
+> Task :react-native-worklets:mergeReleaseNativeLibs
+> Task :react-native-worklets:copyReleaseJniLibsProjectOnly
+
+> Task :react-native-reanimated:externalNativeBuildRelease
+C/C++: Hard link from 'C:\Users\sunny\.gradle\caches\9.0.0\transforms\fff4f781da2956e97673b83a5feea22e\transformed\react-android-0.82.1-release\prefab\modules\reactnative\libs\android.arm64-v8a\libreactnative.so' to 'F:\Sandy\S+Study\CODING\mov\netflix\node_modules\react-native-reanimated\android\build\intermediates\cmake\release\obj\arm64-v8a\libreactnative.so' failed. Doing a slower copy instead.
+C/C++: Hard link from 'C:\Users\sunny\.gradle\caches\9.0.0\transforms\fff4f781da2956e97673b83a5feea22e\transformed\react-android-0.82.1-release\prefab\modules\reactnative\libs\android.arm64-v8a\libreactnative.so' to 'F:\Sandy\S+Study\CODING\mov\netflix\node_modules\react-native-reanimated\android\build\intermediates\cmake\release\obj\arm64-v8a\libreactnative.so' failed. Doing a slower copy instead.
+
+> Task :react-native-reanimated:prefabReleasePackage
+> Task :app:buildCMakeRelWithDebInfo[arm64-v8a]
+C/C++: Hard link from 'C:\Users\sunny\.gradle\caches\9.0.0\transforms\fff4f781da2956e97673b83a5feea22e\transformed\react-android-0.82.1-release\prefab\modules\reactnative\libs\android.arm64-v8a\libreactnative.so' to 'F:\Sandy\S+Study\CODING\mov\netflix\android\app\build\intermediates\cxx\RelWithDebInfo\29713i3p\obj\arm64-v8a\libreactnative.so' failed. Doing a slower copy instead.
+C/C++: Hard link from 'C:\Users\sunny\.gradle\caches\9.0.0\transforms\fff4f781da2956e97673b83a5feea22e\transformed\react-android-0.82.1-release\prefab\modules\reactnative\libs\android.arm64-v8a\libreactnative.so' to 'F:\Sandy\S+Study\CODING\mov\netflix\android\app\build\intermediates\cxx\RelWithDebInfo\29713i3p\obj\arm64-v8a\libreactnative.so' failed. Doing a slower copy instead.
+
+> Task :app:configureCMakeRelWithDebInfo[armeabi-v7a]
+C/C++: CMake Warning in F:/Sandy/S+Study/CODING/mov/netflix/node_modules/react-native-gesture-handler/android/build/generated/source/codegen/jni/CMakeLists.txt:
+C/C++:   The object file directory
+C/C++:     F:/Sandy/S+Study/CODING/mov/netflix/android/app/.cxx/RelWithDebInfo/29713i3p/armeabi-v7a/rngesturehandler_codegen_autolinked_build/CMakeFiles/react_codegen_rngesturehandler_codegen.dir/./
+C/C++:   has 187 characters.  The maximum full path to an object file is 250
+C/C++:   characters (see CMAKE_OBJECT_PATH_MAX).  Object file
+C/C++:     react/renderer/components/rngesturehandler_codegen/rngesturehandler_codegenJSI-generated.cpp.o
+C/C++:   cannot be safely placed under this directory.  The build may not work
+C/C++:   correctly.
+
+> Task :app:buildCMakeRelWithDebInfo[armeabi-v7a]
+
+> Task :app:configureCMakeRelWithDebInfo[x86]
+C/C++: CMake Warning in F:/Sandy/S+Study/CODING/mov/netflix/node_modules/react-native-gesture-handler/android/build/generated/source/codegen/jni/CMakeLists.txt:
+C/C++:   The object file directory
+C/C++:     F:/Sandy/S+Study/CODING/mov/netflix/android/app/.cxx/RelWithDebInfo/29713i3p/x86/rngesturehandler_codegen_autolinked_build/CMakeFiles/react_codegen_rngesturehandler_codegen.dir/./
+C/C++:   has 179 characters.  The maximum full path to an object file is 250
+C/C++:   characters (see CMAKE_OBJECT_PATH_MAX).  Object file
+C/C++:     react/renderer/components/rngesturehandler_codegen/rngesturehandler_codegenJSI-generated.cpp.o
+C/C++:   cannot be safely placed under this directory.  The build may not work
+C/C++:   correctly.
+
+> Task :app:buildCMakeRelWithDebInfo[x86]
+
+> Task :app:configureCMakeRelWithDebInfo[x86_64]
+C/C++: CMake Warning in F:/Sandy/S+Study/CODING/mov/netflix/node_modules/react-native-gesture-handler/android/build/generated/source/codegen/jni/CMakeLists.txt:
+C/C++:   The object file directory
+C/C++:     F:/Sandy/S+Study/CODING/mov/netflix/android/app/.cxx/RelWithDebInfo/29713i3p/x86_64/rngesturehandler_codegen_autolinked_build/CMakeFiles/react_codegen_rngesturehandler_codegen.dir/./
+C/C++:   has 182 characters.  The maximum full path to an object file is 250
+C/C++:   characters (see CMAKE_OBJECT_PATH_MAX).  Object file
+C/C++:     react/renderer/components/rngesturehandler_codegen/rngesturehandler_codegenJSI-generated.cpp.o
+C/C++:   cannot be safely placed under this directory.  The build may not work
+C/C++:   correctly.
+
+> Task :app:buildCMakeRelWithDebInfo[x86_64]
+> Task :app:mergeReleaseJniLibFolders
+> Task :lottie-react-native:preReleaseBuild UP-TO-DATE
+> Task :lottie-react-native:mergeReleaseJniLibFolders
+> Task :lottie-react-native:mergeReleaseNativeLibs NO-SOURCE
+> Task :lottie-react-native:copyReleaseJniLibsProjectOnly
+> Task :react-native-community_slider:preReleaseBuild UP-TO-DATE
+> Task :react-native-community_slider:mergeReleaseJniLibFolders
+> Task :react-native-community_slider:mergeReleaseNativeLibs NO-SOURCE
+> Task :react-native-community_slider:copyReleaseJniLibsProjectOnly
+> Task :react-native-gesture-handler:preReleaseBuild UP-TO-DATE
+> Task :react-native-gesture-handler:configureCMakeRelWithDebInfo[arm64-v8a]
+
+> Task :react-native-gesture-handler:buildCMakeRelWithDebInfo[arm64-v8a]
+C/C++: Hard link from 'C:\Users\sunny\.gradle\caches\9.0.0\transforms\fff4f781da2956e97673b83a5feea22e\transformed\react-android-0.82.1-release\prefab\modules\reactnative\libs\android.arm64-v8a\libreactnative.so' to 'F:\Sandy\S+Study\CODING\mov\netflix\node_modules\react-native-gesture-handler\android\build\intermediates\cxx\RelWithDebInfo\331m1l60\obj\arm64-v8a\libreactnative.so' failed. Doing a slower copy instead.
+C/C++: Hard link from 'C:\Users\sunny\.gradle\caches\9.0.0\transforms\fff4f781da2956e97673b83a5feea22e\transformed\react-android-0.82.1-release\prefab\modules\reactnative\libs\android.arm64-v8a\libreactnative.so' to 'F:\Sandy\S+Study\CODING\mov\netflix\node_modules\react-native-gesture-handler\android\build\intermediates\cxx\RelWithDebInfo\331m1l60\obj\arm64-v8a\libreactnative.so' failed. Doing a slower copy instead.
+
+> Task :react-native-gesture-handler:configureCMakeRelWithDebInfo[armeabi-v7a]
+> Task :react-native-gesture-handler:buildCMakeRelWithDebInfo[armeabi-v7a]
+> Task :react-native-gesture-handler:configureCMakeRelWithDebInfo[x86]
+> Task :react-native-gesture-handler:buildCMakeRelWithDebInfo[x86]
+> Task :react-native-gesture-handler:configureCMakeRelWithDebInfo[x86_64]
+^C

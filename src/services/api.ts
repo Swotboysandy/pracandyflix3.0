@@ -101,6 +101,7 @@ export interface MovieDetails {
     resume?: string;
     suggest?: SuggestedMovie[];
     error: any;
+    provider?: 'Netflix' | 'Prime Video' | 'Hotstar';
 }
 
 export const fetchMovieDetails = async (id: string, isPrimeVideo: boolean = false, isHotstar: boolean = false): Promise<MovieDetails | null> => {
@@ -135,7 +136,24 @@ export const fetchMovieDetails = async (id: string, isPrimeVideo: boolean = fals
         });
 
         if (response.data && response.data.status === 'y') {
-            return response.data;
+            const data = response.data;
+
+            // Set provider
+            if (isHotstar) data.provider = 'Hotstar';
+            else if (isPrimeVideo) data.provider = 'Prime Video';
+            else data.provider = 'Netflix';
+
+            // Fix empty seasons if episodes exist
+            if ((!data.season || data.season.length === 0) && data.episodes && data.episodes.length > 0) {
+                const uniqueSeasons = [...new Set(data.episodes.map((e: any) => e.s))];
+                data.season = uniqueSeasons.map((s: any) => ({
+                    s: s,
+                    id: `season-${s}`,
+                    ep: data.episodes.filter((e: any) => e.s === s).length.toString()
+                }));
+            }
+
+            return data;
         }
 
         return null;
@@ -161,7 +179,16 @@ export interface StreamResult {
     cookies: string;
 }
 
-export const getStreamUrl = async (id: string, title: string = 'Movie', isPrimeVideo: boolean = false, isHotstar: boolean = false): Promise<StreamResult | null> => {
+export const getStreamUrl = async (
+    id: string,
+    title: string = 'Movie',
+    isPrimeVideo: boolean = false,
+    isHotstar: boolean = false,
+    type: 'movie' | 'tv' = 'movie',
+    season?: number,
+    episode?: number,
+    mainTitle?: string
+): Promise<StreamResult | null> => {
     try {
         // 1. Fetch Cookies
         const cookieResponse = await axios.get(COOKIE_URL);
@@ -325,9 +352,92 @@ export const getStreamUrl = async (id: string, title: string = 'Movie', isPrimeV
         }
 
         console.log('No sources found in playlist response');
-        return null;
+
+        // Fallback to Consumet if primary source fails
+        console.log('Primary source failed, trying Consumet...');
+        return await getConsumetStreamUrl(mainTitle || title, type, season, episode);
+
     } catch (error) {
         console.error('Error getting stream URL:', error);
+        // Fallback to Consumet on error
+        console.log('Primary source error, trying Consumet...');
+        return await getConsumetStreamUrl(mainTitle || title, type, season, episode);
+    }
+};
+
+const CONSUMET_URL = 'https://consumet.zendax.tech';
+
+const getConsumetStreamUrl = async (
+    query: string,
+    type: 'movie' | 'tv' = 'movie',
+    season?: number,
+    episode?: number
+): Promise<StreamResult | null> => {
+    try {
+        console.log(`Consumet: Searching for ${query} (${type})`);
+        // 1. Search for the movie/show
+        const searchUrl = `${CONSUMET_URL}/movies/flixhq/${encodeURIComponent(query)}`;
+        const searchResponse = await axios.get(searchUrl);
+
+        if (!searchResponse.data.results || searchResponse.data.results.length === 0) {
+            console.log('Consumet: No search results found');
+            return null;
+        }
+
+        // Find best match (simple logic: first result or exact match)
+        const match = searchResponse.data.results[0];
+        console.log(`Consumet: Found match ${match.title} (${match.id})`);
+
+        // 2. Get Info
+        const infoUrl = `${CONSUMET_URL}/movies/flixhq/info/${match.id}`;
+        const infoResponse = await axios.get(infoUrl);
+        const info = infoResponse.data;
+
+        let episodeId: string;
+
+        if (type === 'tv') {
+            if (!season || !episode) {
+                console.log('Consumet: TV show requested but no season/episode provided');
+                return null;
+            }
+
+            // Find the specific episode
+            const targetEpisode = info.episodes.find((ep: any) => ep.season === season && ep.number === episode);
+            if (!targetEpisode) {
+                console.log(`Consumet: Season ${season} Episode ${episode} not found`);
+                return null;
+            }
+            episodeId = targetEpisode.id;
+        } else {
+            // For movies, usually the episodeId is the movie ID or there's a single episode
+            // FlixHQ structure for movies often has one "episode"
+            if (info.episodes && info.episodes.length > 0) {
+                episodeId = info.episodes[0].id;
+            } else {
+                episodeId = match.id; // Fallback
+            }
+        }
+
+        console.log(`Consumet: Fetching stream for episodeId ${episodeId}`);
+
+        // 3. Get Stream
+        const watchUrl = `${CONSUMET_URL}/movies/flixhq/watch/${episodeId}`;
+        const watchResponse = await axios.get(watchUrl);
+
+        if (watchResponse.data.sources && watchResponse.data.sources.length > 0) {
+            // Find best quality (m3u8)
+            const source = watchResponse.data.sources.find((s: any) => s.quality === 'auto') || watchResponse.data.sources[0];
+
+            return {
+                url: source.url,
+                cookies: '', // Consumet streams usually don't need cookies
+            };
+        }
+
+        return null;
+
+    } catch (error) {
+        console.error('Consumet Error:', error);
         return null;
     }
 };

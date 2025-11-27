@@ -18,7 +18,7 @@ import { RootStackParamList } from '../navigation/types';
 
 type HomeScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Home'>;
 
-const HomeScreen = () => {
+const HomeScreen = ({ route }: any) => {
     const navigation = useNavigation<HomeScreenNavigationProp>();
     const [sections, setSections] = useState<Section[]>([]);
     const [loading, setLoading] = useState(true);
@@ -30,16 +30,40 @@ const HomeScreen = () => {
 
     const loadData = async () => {
         const data = await fetchHomeData();
+        let filteredData = data;
 
-        const featuredSection = data.find(s => s.title === 'Featured');
+        if (route?.name === 'Movies') {
+            filteredData = data.filter(s =>
+                s.title.toLowerCase().includes('movie') ||
+                s.title.toLowerCase().includes('film') ||
+                s.title.toLowerCase().includes('hollywood') ||
+                s.title.toLowerCase().includes('bollywood')
+            );
+        } else if (route?.name === 'Series') {
+            filteredData = data.filter(s =>
+                s.title.toLowerCase().includes('series') ||
+                s.title.toLowerCase().includes('tv') ||
+                s.title.toLowerCase().includes('show') ||
+                s.title.toLowerCase().includes('web')
+            );
+        }
+
+        // If filtering resulted in empty data, fallback to all data (or handle gracefully)
+        // But for now, let's just use what we have. If empty, it will show empty.
+        // However, we should probably ensure at least some data if possible, but strict filtering is safer.
+
+        const displayData = filteredData.length > 0 ? filteredData : (route?.name === 'HomeTab' ? data : []);
+
+        const featuredSection = displayData.find(s => s.title === 'Featured');
         if (featuredSection && featuredSection.movies.length > 0) {
             setHeroMovie(featuredSection.movies[0]);
-            setSections(data.filter(s => s.title !== 'Featured'));
-        } else if (data.length > 0 && data[0].movies.length > 0) {
-            setHeroMovie(data[0].movies[0]);
-            setSections(data);
+            setSections(displayData.filter(s => s.title !== 'Featured'));
+        } else if (displayData.length > 0 && displayData[0].movies.length > 0) {
+            setHeroMovie(displayData[0].movies[0]);
+            setSections(displayData);
         } else {
-            setSections(data);
+            setSections(displayData);
+            setHeroMovie(null);
         }
 
         setLoading(false);

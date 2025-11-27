@@ -14,7 +14,7 @@ import {
 import { searchMovies, Movie } from '../services/api';
 
 interface SearchProps {
-    onClose: () => void;
+    onClose?: () => void;
     onMoviePress: (movie: Movie) => void;
 }
 
@@ -41,6 +41,7 @@ const Search: React.FC<SearchProps> = ({ onClose, onMoviePress }) => {
     }, [query]);
 
     useEffect(() => {
+        if (!onClose) return;
         const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
             onClose();
             return true;
