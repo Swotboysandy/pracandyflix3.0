@@ -19,6 +19,8 @@ interface ControlsOverlayProps {
     onSettings: () => void;
     onToggleFullscreen: () => void;
     isFullscreen: boolean;
+    onToggleResizeMode: () => void;
+    resizeMode: 'contain' | 'cover' | 'stretch';
 }
 
 const ControlsOverlay: React.FC<ControlsOverlayProps> = ({
@@ -36,6 +38,8 @@ const ControlsOverlay: React.FC<ControlsOverlayProps> = ({
     onSettings,
     onToggleFullscreen,
     isFullscreen,
+    onToggleResizeMode,
+    resizeMode,
 }) => {
     const formatTime = (seconds: number) => {
         const hrs = Math.floor(seconds / 3600);
@@ -107,6 +111,10 @@ const ControlsOverlay: React.FC<ControlsOverlayProps> = ({
                 </View>
 
                 <View style={styles.bottomControls}>
+                    <TouchableOpacity onPress={onToggleResizeMode} style={styles.iconButton}>
+                        <Monitor color={resizeMode === 'contain' ? '#fff' : '#E50914'} size={24} />
+                    </TouchableOpacity>
+
                     <TouchableOpacity onPress={onSettings} style={styles.iconButton}>
                         <Settings color="#fff" size={24} />
                     </TouchableOpacity>
