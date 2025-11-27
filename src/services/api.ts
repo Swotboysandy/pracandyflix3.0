@@ -4,14 +4,43 @@ export interface Movie {
     id: string;
     title: string;
     imageUrl: string;
-    isPrimeVideo?: boolean;
-    isHotstar?: boolean;
+    provider?: string;
 }
 
 export interface Section {
     title: string;
     movies: Movie[];
 }
+
+export interface Provider {
+    id: string;
+    name: string;
+    url: string;
+}
+
+const PROVIDERS_URL = 'https://raw.githubusercontent.com/Anshu78780/json/main/providers.json';
+const COOKIE_URL = 'https://raw.githubusercontent.com/Anshu78780/json/main/cookies.json';
+
+export const fetchProviders = async (): Promise<Provider[]> => {
+    try {
+        const response = await axios.get(PROVIDERS_URL);
+        const data = response.data;
+        // Convert object to array
+        return Object.keys(data).map(key => ({
+            id: key,
+            name: data[key].name,
+            url: data[key].url
+        }));
+    } catch (error) {
+        console.error('Error fetching providers:', error);
+        // Fallback to default providers if fetch fails
+        return [
+            { id: 'Netflix', name: 'Netflix', url: 'https://net20.cc' },
+            { id: 'Prime', name: 'Prime Video', url: 'https://net20.cc' },
+            { id: 'Hotstar', name: 'Hotstar', url: 'https://net20.cc' }
+        ];
+    }
+};
 
 const HOME_DATA_URL = 'https://net-cookie-kacj.vercel.app/api/data';
 
@@ -43,7 +72,7 @@ export const fetchHomeData = async (): Promise<Section[]> => {
     }
 };
 
-const COOKIE_URL = 'https://anshu78780.github.io/json/cookies.json';
+
 
 export interface Episode {
     complate: string;
@@ -93,18 +122,16 @@ export interface MovieDetails {
     desc: string;
     season?: Season[];
     episodes?: Episode[];
-    nextPageShow?: number;
-    nextPage?: number;
     nextPageSeason?: string;
     lang?: Array<{ l: string; s: string }>;
     last_ep?: string;
     resume?: string;
     suggest?: SuggestedMovie[];
     error: any;
-    provider?: 'Netflix' | 'Prime Video' | 'Hotstar';
+    provider?: string;
 }
 
-export const fetchMovieDetails = async (id: string, isPrimeVideo: boolean = false, isHotstar: boolean = false): Promise<MovieDetails | null> => {
+export const fetchMovieDetails = async (id: string, providerId: string = 'Netflix'): Promise<MovieDetails | null> => {
     try {
         // 1. Fetch Cookies
         const cookieResponse = await axios.get(COOKIE_URL);
@@ -116,10 +143,10 @@ export const fetchMovieDetails = async (id: string, isPrimeVideo: boolean = fals
         let url: string;
         let referer: string;
 
-        if (isHotstar) {
+        if (providerId === 'Hotstar') {
             url = `${baseUrl}/hs/post.php?id=${id}&t=${time}`;
             referer = `${baseUrl}/hs/home`;
-        } else if (isPrimeVideo) {
+        } else if (providerId === 'Prime') {
             url = `${baseUrl}/pv/post.php?id=${id}&t=${time}`;
             referer = `${baseUrl}/pv/home`;
         } else {
@@ -139,20 +166,7 @@ export const fetchMovieDetails = async (id: string, isPrimeVideo: boolean = fals
             const data = response.data;
 
             // Set provider
-            if (isHotstar) data.provider = 'Hotstar';
-            else if (isPrimeVideo) data.provider = 'Prime Video';
-            else data.provider = 'Netflix';
-
-            // Fix empty seasons if episodes exist
-            if ((!data.season || data.season.length === 0) && data.episodes && data.episodes.length > 0) {
-                const uniqueSeasons = [...new Set(data.episodes.map((e: any) => e.s))];
-                data.season = uniqueSeasons.map((s: any) => ({
-                    s: s,
-                    id: `season-${s}`,
-                    ep: data.episodes.filter((e: any) => e.s === s).length.toString()
-                }));
-            }
-
+            data.provider = providerId;
             return data;
         }
 
@@ -182,8 +196,7 @@ export interface StreamResult {
 export const getStreamUrl = async (
     id: string,
     title: string = 'Movie',
-    isPrimeVideo: boolean = false,
-    isHotstar: boolean = false,
+    providerId: string = 'Netflix',
     type: 'movie' | 'tv' = 'movie',
     season?: number,
     episode?: number,
@@ -194,9 +207,9 @@ export const getStreamUrl = async (
         const cookieResponse = await axios.get(COOKIE_URL);
         const baseCookie = cookieResponse.data.cookies;
         let ott: string;
-        if (isHotstar) {
+        if (providerId === 'Hotstar') {
             ott = 'hs';
-        } else if (isPrimeVideo) {
+        } else if (providerId === 'Prime') {
             ott = 'pv';
         } else {
             ott = 'nf';
@@ -206,7 +219,7 @@ export const getStreamUrl = async (
         const streamBaseUrl = 'https://net51.cc';
 
         // For Hotstar, use simplified approach without play.php
-        if (isHotstar) {
+        if (providerId === 'Hotstar') {
             const timestamp = Math.round(new Date().getTime() / 1000);
             const playlistUrl = `${streamBaseUrl}/hs/playlist.php?id=${id}&t=${timestamp}`;
 
@@ -251,7 +264,7 @@ export const getStreamUrl = async (
         }
 
         // For Prime Video, use simplified approach without play.php
-        if (isPrimeVideo) {
+        if (providerId === 'Prime') {
             const timestamp = Math.round(new Date().getTime() / 1000);
             const playlistUrl = `${streamBaseUrl}/pv/playlist.php?id=${id}&t=${timestamp}`;
 
@@ -442,7 +455,7 @@ const getConsumetStreamUrl = async (
     }
 };
 
-export const searchMovies = async (query: string, platform: 'netflix' | 'primevideo' | 'hotstar' = 'netflix'): Promise<Movie[]> => {
+export const searchMovies = async (query: string, providerId: string = 'Netflix'): Promise<Movie[]> => {
     try {
         // 1. Fetch Cookies
         const cookieResponse = await axios.get(COOKIE_URL);
@@ -452,14 +465,14 @@ export const searchMovies = async (query: string, platform: 'netflix' | 'primevi
         const time = Date.now();
         let finalUrl: string;
 
-        if (platform === 'hotstar') {
+        if (providerId === 'Hotstar') {
             // Use new Hotstar API endpoint
             finalUrl = `https://anshu-netmirror.hunternisha55.workers.dev/?q=${encodeURIComponent(query)}&cookie=${encodeURIComponent(cookie)}`;
         } else {
             const baseUrl = 'https://net51.cc';
             let searchPageUrl: string;
 
-            if (platform === 'primevideo') {
+            if (providerId === 'Prime') {
                 searchPageUrl = `${baseUrl}/pv/search.php?s=${encodeURIComponent(query)}&t=${time}`;
             } else {
                 searchPageUrl = `${baseUrl}/search.php?s=${encodeURIComponent(query)}&t=${time}`;
@@ -477,9 +490,9 @@ export const searchMovies = async (query: string, platform: 'netflix' | 'primevi
         if (response.data && response.data.searchResult) {
             return response.data.searchResult.map((item: any) => {
                 let imageUrl: string;
-                if (platform === 'hotstar') {
+                if (providerId === 'Hotstar') {
                     imageUrl = `https://imgcdn.media/hs/341/${item.id}.jpg`;
-                } else if (platform === 'primevideo') {
+                } else if (providerId === 'Prime') {
                     imageUrl = `https://imgcdn.kim/pv/341/${item.id}.jpg`;
                 } else {
                     imageUrl = `https://img.nfmirrorcdn.top/poster/h/${item.id}.jpg`;
@@ -489,8 +502,7 @@ export const searchMovies = async (query: string, platform: 'netflix' | 'primevi
                     id: item.id,
                     title: item.t,
                     imageUrl: imageUrl,
-                    isPrimeVideo: platform === 'primevideo',
-                    isHotstar: platform === 'hotstar',
+                    provider: providerId,
                 };
             });
         }

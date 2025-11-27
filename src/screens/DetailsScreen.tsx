@@ -6,15 +6,25 @@ import DetailsPage from '../components/DetailsPage';
 type Props = StackScreenProps<RootStackParamList, 'Details'>;
 
 const DetailsScreen: React.FC<Props> = ({ route, navigation }) => {
-    const { movieId, isPrimeVideo, isHotstar } = route.params;
+    const { movieId, providerId } = route.params;
+
+    const handleClose = () => {
+        navigation.goBack();
+    };
+
+    const handleMoviePress = (movie: any) => { // Assuming 'Movie' type is defined elsewhere or 'any' for now
+        navigation.push('Details', {
+            movieId: movie.id,
+            providerId: movie.provider || providerId,
+        });
+    };
 
     return (
         <DetailsPage
             movieId={movieId}
-            isPrimeVideo={isPrimeVideo}
-            isHotstar={isHotstar}
-            onClose={() => navigation.goBack()}
-            onMoviePress={(id) => navigation.push('Details', { movieId: id })}
+            providerId={providerId}
+            onClose={handleClose}
+            onMoviePress={handleMoviePress}
         />
     );
 };
