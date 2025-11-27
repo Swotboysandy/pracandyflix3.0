@@ -142,11 +142,14 @@ export const fetchMovieDetails = async (id: string, providerId: string = 'Netfli
         const baseUrl = 'https://net20.cc';
         let url: string;
         let referer: string;
+        let basePath = '';
 
         if (providerId === 'Hotstar') {
+            basePath = '/hs';
             url = `${baseUrl}/hs/post.php?id=${id}&t=${time}`;
             referer = `${baseUrl}/hs/home`;
         } else if (providerId === 'Prime') {
+            basePath = '/pv';
             url = `${baseUrl}/pv/post.php?id=${id}&t=${time}`;
             referer = `${baseUrl}/pv/home`;
         } else {
@@ -154,24 +157,61 @@ export const fetchMovieDetails = async (id: string, providerId: string = 'Netfli
             referer = `${baseUrl}/home`;
         }
 
-        if (season) {
-            url += `&s=${season}`;
-        }
+        // Note: We do NOT append &s= to post.php anymore, as we handle season fetching via episodes.php
 
-        const response = await axios.get(url, {
-            headers: {
-                'Cookie': cookie,
-                'Referer': referer,
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-            },
-        });
+        const headers = {
+            'Cookie': cookie,
+            'Referer': referer,
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+        };
 
-        if (response.data && response.data.status === 'y') {
-            const data = response.data;
+        const response = await axios.get(url, { headers });
 
-            // Set provider
-            data.provider = providerId;
-            return data;
+        if (response.data) {
+            let data = response.data;
+
+            // Handle nested 'movie' object if present
+            if (data.movie) {
+                data = data.movie;
+            }
+
+            // Basic validation to ensure we have some data
+            if (data.id || data.title || data.episodes) {
+                // Set provider
+                data.provider = providerId;
+
+                // 3. Handle Season Selection
+                if (season && data.season && Array.isArray(data.season)) {
+                    // Find the season ID for the requested season number
+                    // season arg might be "1" or "Season 1" or the ID itself.
+                    const targetSeason = data.season.find((s: any) =>
+                        String(s.s) === String(season) ||
+                        String(s.id) === String(season) ||
+                        `Season ${s.s}` === season
+                    );
+
+                    if (targetSeason) {
+                        console.log(`fetchMovieDetails: Fetching episodes for season ${season} (ID: ${targetSeason.id})`);
+                        const episodesUrl = `${baseUrl}${basePath}/episodes.php?s=${targetSeason.id}&t=${time}&page=1`;
+
+                        try {
+                            const epResponse = await axios.get(episodesUrl, { headers });
+                            if (epResponse.data && epResponse.data.episodes) {
+                                console.log(`fetchMovieDetails: Found ${epResponse.data.episodes.length} episodes for season ${season}`);
+                                data.episodes = epResponse.data.episodes;
+                            } else {
+                                console.log('fetchMovieDetails: No episodes found in season response');
+                            }
+                        } catch (epError) {
+                            console.error('fetchMovieDetails: Error fetching season episodes:', epError);
+                        }
+                    } else {
+                        console.log(`fetchMovieDetails: Season ${season} not found in season list`);
+                    }
+                }
+
+                return data;
+            }
         }
 
         return null;

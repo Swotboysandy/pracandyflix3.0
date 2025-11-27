@@ -38,27 +38,34 @@ const PlayerGestureHandler: React.FC<PlayerGestureHandlerProps> = ({
         );
     };
 
-    const singleTap = Gesture.Tap()
-        .maxDuration(250)
-        .onStart(() => {
-            runOnJS(onSingleTap)();
-        });
-
     const doubleTap = Gesture.Tap()
         .numberOfTaps(2)
         .maxDuration(250)
-        .onStart((e) => {
-            if (e.x < width / 2) {
-                runOnJS(onDoubleTapLeft)();
-                runOnJS(showLeftFeedback)();
-            } else {
-                runOnJS(onDoubleTapRight)();
-                runOnJS(showRightFeedback)();
+        .onEnd((e, success) => {
+            if (success) {
+                if (e.x < width / 2) {
+                    runOnJS(onDoubleTapLeft)();
+                    runOnJS(showLeftFeedback)();
+                } else {
+                    runOnJS(onDoubleTapRight)();
+                    runOnJS(showRightFeedback)();
+                }
+            }
+        });
+
+    const singleTap = Gesture.Tap()
+        .maxDuration(250)
+        // @ts-ignore
+        .requireFailure(doubleTap)
+        .onEnd((e: any, success: any) => {
+            if (success) {
+                runOnJS(onSingleTap)();
             }
         });
 
     // Exclusive gesture handling: wait for double tap failure before triggering single tap
-    const composed = Gesture.Exclusive(doubleTap, singleTap);
+    // const composed = Gesture.Exclusive(doubleTap, singleTap);
+    const composed = Gesture.Race(doubleTap, singleTap);
 
     const leftStyle = useAnimatedStyle(() => ({
         opacity: leftOpacity.value,

@@ -1,0 +1,278 @@
+{
+  "status": "y",
+  "d_lang": "eng",
+  "title": "Stranger Things",
+  "year": "2016",
+  "ua": "U/A 16+",
+  "match": "99% match",
+  "runtime": "5 Seasons",
+  "hdsd": "HD",
+  "type": "t",
+  "creator": "The Duffer Brothers",
+  "director": "",
+  "writer": "",
+  "short_cast": "Winona Ryder, David Harbour, Millie Bobby Brown, Finn Wolfhard, Gaten Matarazzo, Caleb McLaughlin, Noah Schnapp, Sadie Sink, Natalia Dyer, Charlie Heaton, Joe Keery, Maya Hawke, Brett Gelman, Priah Ferguson, Dacre Montgomery, Cara Buono, Matthew Modine, Paul Reiser, Sean Astin, Shannon Purser",
+  "cast": "Winona Ryder, David Harbour, Millie Bobby Brown, Finn Wolfhard, Gaten Matarazzo, Caleb McLaughlin, Noah Schnapp, Sadie Sink, Natalia Dyer, Charlie Heaton, Joe Keery, Maya Hawke, Brett Gelman, Priah Ferguson, Dacre Montgomery, Cara Buono, Matthew Modine, Paul Reiser, Sean Astin, Shannon Purser",
+  "genre": "Sci-Fi TV, Teen TV Shows, US TV Shows, Horror TV Serials",
+  "thismovieis": "Ominous, Scary",
+  "m_desc": "Suitable for persons aged 16 and above and under parental guidance for people under age of 16",
+  "m_reason": "violence, gore",
+  "desc": "When a young boy vanishes, a small town uncovers a mystery involving secret experiments, terrifying supernatural forces and one strange little girl.",
+  "oin": "y",
+  "season": [
+    {
+      "s": "1",
+      "id": "80077209",
+      "ep": "8",
+      "sele": " selected"
+    },
+    {
+      "s": "2",
+      "id": "80117715",
+      "ep": "9",
+      "sele": " selected"
+    },
+    {
+      "s": "3",
+      "id": "80186799",
+      "ep": "8",
+      "sele": " selected"
+    },
+    {
+      "s": "4",
+      "id": "80229865",
+      "ep": "9",
+      "sele": " selected"
+    },
+    {
+      "s": "5",
+      "id": "81297917",
+      "ep": "4",
+      "sele": " selected"
+    }
+  ],
+  "episodes": [
+    {
+      "complate": "0",
+      "id": "81599029",
+      "t": "Chapter One: The Crawl",
+      "s": "S5",
+      "ep": "1",
+      "ep_desc": "November, 1987. The gang evades the military to scour the Upside Down for Vecna — but fails to notice a threat lurking closer to home.",
+      "time": "71m"
+    },
+    {
+      "complate": "0",
+      "id": "81599030",
+      "t": "Chapter Two: The Vanishing of...",
+      "s": "S5",
+      "ep": "2",
+      "ep_desc": "After a vicious attack at the Wheeler home, Mike and Nancy confront the cost of secrecy, while El and Hopper embark on a rescue mission.",
+      "time": "57m"
+    },
+    {
+      "complate": "0",
+      "id": "81599031",
+      "t": "Chapter Three: The Turnbow Trap",
+      "s": "S5",
+      "ep": "3",
+      "ep_desc": "Will gains unique insight into Vecna's next move, giving the crew an opportunity to set a trap. Holly explores her new surroundings.",
+      "time": "69m"
+    },
+    {
+      "complate": "0",
+      "id": "81599032",
+      "t": "Chapter Four: Sorcerer",
+      "s": "S5",
+      "ep": "4",
+      "ep_desc": "The military tightens its grip on the town. Mike, Lucas and Robin orchestrate a daring escape. El comes face-to-face with the enemy.",
+      "time": "86m"
+    }
+  ],
+  "nextPageShow": 0,
+  "nextPage": 2,
+  "nextPageSeason": "81297917",
+  "lang": [
+    {
+      "l": "Czech",
+      "s": "ces"
+    },
+    {
+      "l": "German",
+      "s": "deu"
+    },
+    {
+      "l": "English",
+      "s": "eng"
+    },
+    {
+      "l": "Spanish",
+      "s": "spa"
+    },
+    {
+      "l": "Spanish",
+      "s": "spa"
+    },
+    {
+      "l": "Filipino (Tagalog)",
+      "s": "fil"
+    },
+    {
+      "l": "French",
+      "s": "fra"
+    },
+    {
+      "l": "Unknown",
+      "s": "und"
+    },
+    {
+      "l": "Hindi",
+      "s": "hin"
+    },
+    {
+      "l": "Hungarian",
+      "s": "hun"
+    },
+    {
+      "l": "Indonesian",
+      "s": "ind"
+    },
+    {
+      "l": "Italian",
+      "s": "ita"
+    },
+    {
+      "l": "Japanese",
+      "s": "jpn"
+    },
+    {
+      "l": "Polish",
+      "s": "pol"
+    },
+    {
+      "l": "Portuguese",
+      "s": "por"
+    },
+    {
+      "l": "Russian",
+      "s": "rus"
+    },
+    {
+      "l": "Tamil",
+      "s": "tam"
+    },
+    {
+      "l": "Telugu",
+      "s": "tel"
+    },
+    {
+      "l": "Thai",
+      "s": "tha"
+    },
+    {
+      "l": "Turkish",
+      "s": "tur"
+    },
+    {
+      "l": "Ukrainian",
+      "s": "ukr"
+    },
+    {
+      "l": "Vietnamese",
+      "s": "vie"
+    }
+  ],
+  "last_ep": "81599029",
+  "resume": "",
+  "suggest": [
+    {
+      "id": "80200575",
+      "d": "An aimless gamer and his two friends find themselves in a parallel Tokyo, where they're forced to compete in a series of sadistic games to survive.",
+      "ua": "A",
+      "t": "3 Seasons",
+      "y": "2020",
+      "m": "49% match"
+    },
+    {
+      "id": "80186863",
+      "d": "Reunited by their father's death, estranged siblings with extraordinary powers uncover shocking family secrets — and a looming threat to humanity.",
+      "ua": "U/A 16+",
+      "t": "4 Seasons",
+      "y": "2019",
+      "m": "48% match"
+    },
+    {
+      "id": "80100172",
+      "d": "A missing child sets four families on a frantic hunt for answers as they unearth a mind-bending mystery that spans three generations.",
+      "ua": "A",
+      "t": "3 Seasons",
+      "y": "2017",
+      "m": "92% match"
+    },
+    {
+      "id": "81237994",
+      "d": "A high school becomes ground zero for a zombie virus outbreak. Trapped students must fight their way out — or turn into one of the rabid infected.",
+      "ua": "A",
+      "t": "1 Seasons",
+      "y": "2022",
+      "m": "69% match"
+    },
+    {
+      "id": "81325689",
+      "d": "After a series of brutal slayings, a teen and her friends take on an evil force that's plagued their notorious town for centuries. Welcome to Shadyside.",
+      "ua": "A",
+      "t": "1h 47m",
+      "y": "2021",
+      "m": "75% match"
+    },
+    {
+      "id": "80223989",
+      "d": "Magic and mischief collide as half-human, half-witch Sabrina navigates between two worlds: mortal teen life and her family's legacy, the Church of Night.",
+      "ua": "A",
+      "t": "4 Seasons",
+      "y": "2018",
+      "m": "97% match"
+    },
+    {
+      "id": "81061734",
+      "d": "As humans turn into savage monsters and the world plunges into terror, a handful of survivors fight for their lives — and to hold on to their humanity.",
+      "ua": "A",
+      "t": "3 Seasons",
+      "y": "2020",
+      "m": "61% match"
+    },
+    {
+      "id": "81619948",
+      "d": "When a roboticist tests the lifelike companion doll she's invented on her orphaned niece, the android soon takes her childcare duties deadly seriously.",
+      "ua": "U/A 16+",
+      "t": "1h 41m",
+      "y": "2023",
+      "m": "62% match"
+    },
+    {
+      "id": "80117803",
+      "d": "A widowed mom sets out to solve the mystery surrounding her young son's emerging superpowers while keeping his extraordinary gifts under wraps.",
+      "ua": "U/A 7+",
+      "t": "2 Seasons",
+      "y": "2019",
+      "m": "62% match"
+    },
+    {
+      "id": "80174608",
+      "d": "Terrifying creatures, wicked surprises and dark comedy converge in this NSFW anthology of animated stories presented by Tim Miller and David Fincher.",
+      "ua": "A",
+      "t": "4 Seasons",
+      "y": "2019",
+      "m": "38% match"
+    },
+    {
+      "id": "80084447",
+      "d": "The life of typical teen Clary Fray is upended when she learns that she's part of a race of demon-hunting humans who have the blood of angels.",
+      "ua": "U/A 16+",
+      "t": "4 Seasons",
+      "y": "2016",
+      "m": "39% match"
+    }
+  ],
+  "error": null
+}

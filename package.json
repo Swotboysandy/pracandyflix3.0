@@ -24,6 +24,7 @@
     "react-native": "0.82.1",
     "react-native-cheerio": "^1.0.0-rc.4",
     "react-native-gesture-handler": "^2.29.1",
+    "react-native-media-console": "^2.2.4",
     "react-native-orientation-locker": "^1.7.0",
     "react-native-reanimated": "^4.1.5",
     "react-native-safe-area-context": "^5.5.2",

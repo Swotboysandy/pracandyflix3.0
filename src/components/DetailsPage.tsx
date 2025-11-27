@@ -50,6 +50,46 @@ const DetailsPage: React.FC<DetailsPageProps> = ({ movieId, onClose, onMoviePres
         return () => backHandler.remove();
     }, [onClose, videoStream]);
 
+    const renderEpisode = useCallback((episode: Episode, index: number) => (
+        <TouchableOpacity key={episode.id} style={styles.episodeCard} onPress={() => handleEpisodePress(episode)}>
+            <View style={styles.episodeNumber}>
+                <Text style={styles.episodeNumberText}>{episode.ep}</Text>
+            </View>
+            <View style={styles.episodeInfo}>
+                <View style={styles.episodeHeader}>
+                    <Text style={styles.episodeTitle}>{episode.t}</Text>
+                    <Text style={styles.episodeTime}>{episode.time}</Text>
+                </View>
+                <Text style={styles.episodeDesc} numberOfLines={3}>
+                    {episode.ep_desc}
+                </Text>
+            </View>
+        </TouchableOpacity>
+    ), []);
+
+    const renderSuggestion = useCallback((movie: SuggestedMovie) => (
+        <TouchableOpacity
+            key={movie.id}
+            style={styles.suggestionCard}
+            onPress={() => onMoviePress({ id: movie.id, title: movie.t, imageUrl: `https://imgcdn.kim/poster/341/${movie.id}.jpg` })}
+        >
+            <Image
+                source={{ uri: `https://imgcdn.kim/poster/341/${movie.id}.jpg` }}
+                style={styles.suggestionImage}
+            />
+            <View style={styles.suggestionInfo}>
+                <View style={styles.suggestionHeader}>
+                    <Text style={styles.suggestionMatch}>{movie.m}</Text>
+                    <Text style={styles.suggestionYear}>{movie.y}</Text>
+                </View>
+                <Text style={styles.suggestionRuntime}>{movie.t}</Text>
+                <Text style={styles.suggestionDesc} numberOfLines={3}>
+                    {movie.d}
+                </Text>
+            </View>
+        </TouchableOpacity>
+    ), [onMoviePress]);
+
     const loadDetails = async () => {
         setLoading(true);
         const data = await fetchMovieDetails(movieId, providerId);
@@ -77,26 +117,42 @@ const DetailsPage: React.FC<DetailsPageProps> = ({ movieId, onClose, onMoviePres
     };
 
     const handleSeasonPress = async (seasonStr: string) => {
+        console.log(`handleSeasonPress: Clicked Season ${seasonStr}`);
         setSelectedSeason(seasonStr);
 
         // Check if we already have episodes for this season
         const hasEpisodes = allEpisodes.some(ep => ep && String(ep.s) === String(seasonStr));
+        console.log(`handleSeasonPress: Has episodes for Season ${seasonStr}? ${hasEpisodes}`);
 
         if (!hasEpisodes && details?.season) {
             // Find the season object to get its ID
             const seasonObj = details.season.find(s => String(s.s) === String(seasonStr));
+            console.log(`handleSeasonPress: Found season object:`, seasonObj);
 
             if (seasonObj) {
                 setSeasonLoading(true);
                 try {
                     // Fetch details for this specific season using the main movie ID and season number
                     // We use details.id (or movieId) and pass the season number as the 3rd argument
+                    console.log(`handleSeasonPress: Fetching details for Season ${seasonStr} with ID ${movieId}`);
                     const seasonData = await fetchMovieDetails(movieId, providerId, seasonStr);
+                    console.log(`handleSeasonPress: Fetch result:`, seasonData ? 'Success' : 'Null');
 
                     if (seasonData && seasonData.episodes) {
+                        console.log(`handleSeasonPress: Got ${seasonData.episodes.length} episodes`);
+
+                        // Force the season number to match the requested season
+                        // This fixes the issue where API returns episodes with wrong 's' value (e.g. S5 for S1)
+                        const fixedEpisodes = seasonData.episodes.map(ep => ({
+                            ...ep,
+                            s: seasonStr,
+                            // Append season to ID to avoid deduplication if API returns same episodes for different seasons
+                            id: `${ep.id}_${seasonStr}`
+                        }));
+
                         setAllEpisodes(prev => {
                             // Filter out nulls from new episodes
-                            const validNewEpisodes = seasonData.episodes!.filter(ep => ep !== null);
+                            const validNewEpisodes = fixedEpisodes.filter(ep => ep !== null);
 
                             // Merge new episodes, avoiding duplicates
                             const newEpisodes = validNewEpisodes.filter(newEp =>
@@ -231,45 +287,7 @@ const DetailsPage: React.FC<DetailsPageProps> = ({ movieId, onClose, onMoviePres
         );
     }
 
-    const renderEpisode = useCallback((episode: Episode, index: number) => (
-        <TouchableOpacity key={episode.id} style={styles.episodeCard} onPress={() => handleEpisodePress(episode)}>
-            <View style={styles.episodeNumber}>
-                <Text style={styles.episodeNumberText}>{episode.ep}</Text>
-            </View>
-            <View style={styles.episodeInfo}>
-                <View style={styles.episodeHeader}>
-                    <Text style={styles.episodeTitle}>{episode.t}</Text>
-                    <Text style={styles.episodeTime}>{episode.time}</Text>
-                </View>
-                <Text style={styles.episodeDesc} numberOfLines={3}>
-                    {episode.ep_desc}
-                </Text>
-            </View>
-        </TouchableOpacity>
-    ), [handleEpisodePress]);
-
-    const renderSuggestion = useCallback((movie: SuggestedMovie) => (
-        <TouchableOpacity
-            key={movie.id}
-            style={styles.suggestionCard}
-            onPress={() => onMoviePress({ id: movie.id, title: movie.t, imageUrl: `https://imgcdn.kim/poster/341/${movie.id}.jpg` })}
-        >
-            <Image
-                source={{ uri: `https://imgcdn.kim/poster/341/${movie.id}.jpg` }}
-                style={styles.suggestionImage}
-            />
-            <View style={styles.suggestionInfo}>
-                <View style={styles.suggestionHeader}>
-                    <Text style={styles.suggestionMatch}>{movie.m}</Text>
-                    <Text style={styles.suggestionYear}>{movie.y}</Text>
-                </View>
-                <Text style={styles.suggestionRuntime}>{movie.t}</Text>
-                <Text style={styles.suggestionDesc} numberOfLines={3}>
-                    {movie.d}
-                </Text>
-            </View>
-        </TouchableOpacity>
-    ), [onMoviePress]);
+    // Render functions moved to top
 
     return (
         <View style={styles.container}>
