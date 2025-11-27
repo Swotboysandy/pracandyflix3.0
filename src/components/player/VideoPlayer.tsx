@@ -7,10 +7,11 @@ interface VideoPlayerProps {
     videoUrl: string;
     title: string;
     cookies: string;
+    referer?: string;
     onClose: () => void;
 }
 
-const VideoPlayer: React.FC<VideoPlayerProps> = ({ videoUrl, title, cookies, onClose }) => {
+const VideoPlayer: React.FC<VideoPlayerProps> = ({ videoUrl, title, cookies, referer, onClose }) => {
 
     useEffect(() => {
         // Enter fullscreen on mount
@@ -38,24 +39,27 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ videoUrl, title, cookies, onC
                     headers: {
                         Cookie: cookies,
                         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+                        ...(referer ? { 'Referer': referer } : {}),
                     }
                 }}
                 title={title}
                 onBack={onClose}
                 onEnd={onClose}
-                fullscreen={true}
                 resizeMode="contain"
                 showOnStart={true}
-                controlTimeout={3000}
-                navigator={null}
+                controlTimeout={4000}
+                navigator={undefined}
                 disableVolume={false}
                 disableBack={false}
-                disableFullscreen={false} // Allow toggling if needed, but we force it
+                disableFullscreen={true} // We handle fullscreen manually via orientation
                 disableTimer={false}
                 disableSeekbar={false}
                 disablePlayPause={false}
                 seekColor="#E50914"
                 toggleResizeModeOnFullscreen={false}
+                tapAnywhereToPause={true}
+                rewindTime={10}
+                forwardTime={10}
             />
         </View>
     );

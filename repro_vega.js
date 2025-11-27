@@ -11,7 +11,7 @@ async function testDirectVegaEndpoints() {
         // 1. Fetch Cookies
         console.log('Fetching cookies...');
         const cookieRes = await axios.get(COOKIE_URL);
-        const cookie = cookieRes.data.cookies; // Assuming format { cookies: "..." }
+        const cookie = cookieRes.data.cookies;
         console.log('Got cookie:', cookie);
 
         const headers = {
@@ -20,91 +20,90 @@ async function testDirectVegaEndpoints() {
             'Accept-Language': 'en-US,en;q=0.9',
         };
 
-        // Test 1: s=SeasonID
+        // Test 1: s=SeasonID (Season 1 of Stranger Things)
         const seasonId = '80077209';
         const seasonUrl = `${BASE_URL}/episodes.php?s=${seasonId}&t=${timestamp}&page=1`;
         console.log(`\nFetching episodes (SeasonID): ${seasonUrl}`);
-        // 0. Search for a show to get a valid ID
-        const searchQuery = 'Stranger Things';
-        const searchUrl = `https://odd-cloud-1e14.hunternisha55.workers.dev/?url=${encodeURIComponent(`${BASE_URL}/search.php?s=${encodeURIComponent(searchQuery)}&t=${timestamp}`)}&cookie=${encodeURIComponent(cookie)}`;
-        console.log(`\nSearching for: ${searchQuery}`);
-        const searchRes = await axios.get(searchUrl);
         
-        let targetId = MOVIE_ID;
-        if (searchRes.data && searchRes.data.searchResult && searchRes.data.searchResult.length > 0) {
-            const firstResult = searchRes.data.searchResult[0];
-            console.log(`Found: ${firstResult.t} (ID: ${firstResult.id})`);
-            targetId = firstResult.id;
-        } else {
-            console.log('Search failed, using default ID');
-        }
+        try {
+            const seasonRes = await axios.get(seasonUrl, { headers });
+            console.log('SeasonID Success. Keys:', Object.keys(seasonRes.data));
+            
+            if (seasonRes.data.episodes && seasonRes.data.episodes.length > 0) {
+                console.log(`Episodes found: ${seasonRes.data.episodes.length}`);
+                const firstEp = seasonRes.data.episodes[0];
+                console.log(`First Ep: ${firstEp.ep}, ID: ${firstEp.id}, s: ${firstEp.s}`);
+                
+                // Test Stream for this episode
+                const streamUrl = `${BASE_URL}/mobile/playlist.php?id=${firstEp.id}&t=${timestamp}`;
+                console.log(`\nFetching stream for Season 1 Ep 1: ${streamUrl}`);
+                // Test Stream using play.php flow (like api.ts)
+                const playUrl = `${BASE_URL}/play.php`;
+                const playFormData = new FormData();
+                playFormData.append('id', firstEp.id);
+                
+                console.log(`\nFetching play.php for ID: ${firstEp.id}`);
+                try {
+                    const playRes = await axios.post(playUrl, playFormData, {
+                        headers: {
+                            ...headers,
+                            'Content-Type': 'multipart/form-data',
+                        }
+                    });
+                    
+                    console.log('Play Response:', playRes.data);
+                    
+                    if (playRes.data && playRes.data.h) {
+                        const h = playRes.data.h;
+                        const playlistUrl = `${BASE_URL}/playlist.php?id=${firstEp.id}&t=${encodeURIComponent('Episode')}&tm=${timestamp}&h=${h}`;
+                        console.log(`Fetching playlist.php: ${playlistUrl}`);
+                        
+                        const playlistRes = await axios.get(playlistUrl, { 
+                            headers: {
+                                ...headers,
+                                'Referer': 'https://net51.cc/',
+                                'Origin': 'https://net51.cc',
+                            }
+                        });
+                        
+                        console.log('Playlist Data:', JSON.stringify(playlistRes.data, null, 2));
 
-        // Test 3: Fetch Main Details using POST with found ID
-        const detailsUrl = `${BASE_URL}/post.php?id=${targetId}&t=${timestamp}`;
-        console.log(`\nFetching details (POST): ${detailsUrl}`);
-        
-        const formData = new FormData();
-        const detailsRes = await axios.post(detailsUrl, formData, { 
-            headers: {
-                ...headers,
-                'Content-Type': 'multipart/form-data',
-            }
-        });
-        
-        if (detailsRes.data.movie) {
-            const movie = detailsRes.data.movie;
-            console.log('Movie Title:', movie.title);
-            if (movie.season) {
-                console.log('Seasons found:', movie.season.length);
-                console.log('Season Data:', JSON.stringify(movie.season, null, 2));
-            } else {
-                console.log('No season data in movie details.');
-            }
-        } else {
-            console.log('No movie object in response.');
-            const fs = require('fs');
-            fs.writeFileSync('debug_post_response.json', JSON.stringify(detailsRes.data, null, 2));
-            console.log('Saved full response to debug_post_response.json');
-
-            if (detailsRes.data.episodes) {
-                console.log('Episodes found in POST details:', detailsRes.data.episodes.length);
-                detailsRes.data.episodes.slice(0, 3).forEach(ep => {
-                    if (ep) {
-                        console.log(`Ep: ${ep.ep}, ID: ${ep.id}, s: ${ep.s}`);
+                        if (playlistRes.data && playlistRes.data.length > 0 && playlistRes.data[0].sources && playlistRes.data[0].sources.length > 0) {
+                            let file = playlistRes.data[0].sources[0].file;
+                            if (!file.startsWith('http')) {
+                                file = 'https://net51.cc' + file;
+                            }
+                            console.log(`\nTesting Stream URL: ${file}`);
+                            
+                            try {
+                                const streamTestRes = await axios.get(file, {
+                                    headers: {
+                                        ...headers,
+                                        'Referer': 'https://net51.cc/',
+                                        'Origin': 'https://net51.cc',
+                                    }
+                                });
+                                console.log('Stream Fetch Success:', streamTestRes.status);
+                                console.log('Stream Content (first 200 chars):', streamTestRes.data.substring(0, 200));
+                            } catch (streamErr) {
+                                console.log('Stream Fetch Failed:', streamErr.message);
+                                if (streamErr.response) {
+                                    console.log('Stream Error Status:', streamErr.response.status);
+                                }
+                            }
+                        }
                     } else {
-                        console.log('Ep object is null/undefined');
+                        console.log('Failed to get h parameter from play.php');
                     }
-                });
+                } catch (e) {
+                    console.log('Play flow failed:', e.message);
+                }
+            } else {
+                console.log('No episodes in SeasonID response.');
+                console.log('Full Response:', JSON.stringify(seasonRes.data, null, 2));
             }
-        }
-
-
-        // Test 2: s=ShowID
-        const showUrl = `${BASE_URL}/episodes.php?s=${MOVIE_ID}&t=${timestamp}&page=1`;
-        console.log(`\nFetching episodes (ShowID): ${showUrl}`);
-        const episodesRes = await axios.get(showUrl, { headers });
-        const episodesData = episodesRes.data;
-        
-        if (episodesData && episodesData.episodes) {
-            console.log(`Found ${episodesData.episodes.length} episodes.`);
-            episodesData.episodes.slice(0, 3).forEach(ep => {
-                console.log(`Ep: ${ep.ep}, ID: ${ep.id}, s: ${ep.s}`);
-            });
-
-            // 3. Fetch Stream (using /mobile/playlist.php)
-            if (episodesData.episodes.length > 0) {
-                const firstEp = episodesData.episodes[0];
-                const streamId = firstEp.id;
-                
-                const streamUrl = `${BASE_URL}/mobile/playlist.php?id=${streamId}&t=${timestamp}`;
-                console.log(`\nFetching stream from: ${streamUrl}`);
-                
-                const streamRes = await axios.get(streamUrl, { headers });
-                console.log('Stream Data:', JSON.stringify(streamRes.data, null, 2));
-            }
-        } else {
-            console.log('No episodes found or invalid format.');
-            console.log('Full Response:', JSON.stringify(episodesData, null, 2));
+        } catch (e) {
+            console.log('SeasonID failed:', e.message);
         }
 
     } catch (error) {

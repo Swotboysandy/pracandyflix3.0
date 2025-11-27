@@ -29,7 +29,7 @@ const DetailsPage: React.FC<DetailsPageProps> = ({ movieId, onClose, onMoviePres
     const [loading, setLoading] = useState(true);
     const [selectedSeason, setSelectedSeason] = useState<string>('1');
     const [loadingStream, setLoadingStream] = useState(false);
-    const [videoStream, setVideoStream] = useState<{ url: string; cookies: string; title: string } | null>(null);
+    const [videoStream, setVideoStream] = useState<{ url: string; cookies: string; title: string; referer?: string } | null>(null);
     const [allEpisodes, setAllEpisodes] = useState<Episode[]>([]);
     const [fetchedSeasons, setFetchedSeasons] = useState<Set<string>>(new Set());
     const [seasonLoading, setSeasonLoading] = useState(false);
@@ -95,25 +95,72 @@ const DetailsPage: React.FC<DetailsPageProps> = ({ movieId, onClose, onMoviePres
         const data = await fetchMovieDetails(movieId, providerId);
         setDetails(data);
 
+        let initialEpisodes: Episode[] = [];
         if (data?.episodes) {
             // Filter out nulls
-            const validEpisodes = data.episodes.filter(ep => ep !== null);
-            setAllEpisodes(validEpisodes);
+            initialEpisodes = data.episodes.filter(ep => ep !== null);
+            setAllEpisodes(initialEpisodes);
 
             // Mark initial seasons as fetched
             const initialSeasons = new Set<string>();
-            validEpisodes.forEach(ep => {
+            initialEpisodes.forEach(ep => {
                 if (ep && ep.s) initialSeasons.add(String(ep.s));
             });
             setFetchedSeasons(initialSeasons);
         }
 
         if (data?.season && data.season.length > 0) {
-            // Default to the first season in the list, or the first one we have episodes for
+            // Default to the first season in the list
             const firstSeason = String(data.season[0].s);
             setSelectedSeason(firstSeason);
+
+            // Check if we have episodes for this season
+            const hasEpisodes = initialEpisodes.some(ep => ep && String(ep.s) === String(firstSeason));
+            if (!hasEpisodes) {
+                console.log(`loadDetails: Auto-fetching episodes for default Season ${firstSeason}`);
+                await fetchSeasonEpisodes(firstSeason, data);
+            }
         }
         setLoading(false);
+    };
+
+    const fetchSeasonEpisodes = async (seasonStr: string, currentDetails: MovieDetails | null) => {
+        if (!currentDetails || !currentDetails.season) return;
+
+        const seasonObj = currentDetails.season.find(s => String(s.s) === String(seasonStr));
+        if (seasonObj) {
+            setSeasonLoading(true);
+            try {
+                console.log(`fetchSeasonEpisodes: Fetching details for Season ${seasonStr}`);
+                const seasonData = await fetchMovieDetails(movieId, providerId, seasonStr);
+
+                if (seasonData && seasonData.episodes) {
+                    console.log(`fetchSeasonEpisodes: Got ${seasonData.episodes.length} episodes`);
+
+                    const fixedEpisodes = seasonData.episodes.map(ep => ({
+                        ...ep,
+                        s: seasonStr,
+                        // Do NOT modify ID to ensure playback works
+                        id: ep.id
+                    }));
+
+                    setAllEpisodes(prev => {
+                        const validNewEpisodes = fixedEpisodes.filter(ep => ep !== null);
+                        // Merge new episodes, avoiding duplicates by ID
+                        const newEpisodes = validNewEpisodes.filter(newEp =>
+                            !prev.some(existingEp => existingEp && existingEp.id === newEp.id)
+                        );
+                        return [...prev, ...newEpisodes];
+                    });
+
+                    setFetchedSeasons(prev => new Set(prev).add(seasonStr));
+                }
+            } catch (error) {
+                console.error("Failed to fetch season episodes", error);
+            } finally {
+                setSeasonLoading(false);
+            }
+        }
     };
 
     const handleSeasonPress = async (seasonStr: string) => {
@@ -122,54 +169,9 @@ const DetailsPage: React.FC<DetailsPageProps> = ({ movieId, onClose, onMoviePres
 
         // Check if we already have episodes for this season
         const hasEpisodes = allEpisodes.some(ep => ep && String(ep.s) === String(seasonStr));
-        console.log(`handleSeasonPress: Has episodes for Season ${seasonStr}? ${hasEpisodes}`);
 
-        if (!hasEpisodes && details?.season) {
-            // Find the season object to get its ID
-            const seasonObj = details.season.find(s => String(s.s) === String(seasonStr));
-            console.log(`handleSeasonPress: Found season object:`, seasonObj);
-
-            if (seasonObj) {
-                setSeasonLoading(true);
-                try {
-                    // Fetch details for this specific season using the main movie ID and season number
-                    // We use details.id (or movieId) and pass the season number as the 3rd argument
-                    console.log(`handleSeasonPress: Fetching details for Season ${seasonStr} with ID ${movieId}`);
-                    const seasonData = await fetchMovieDetails(movieId, providerId, seasonStr);
-                    console.log(`handleSeasonPress: Fetch result:`, seasonData ? 'Success' : 'Null');
-
-                    if (seasonData && seasonData.episodes) {
-                        console.log(`handleSeasonPress: Got ${seasonData.episodes.length} episodes`);
-
-                        // Force the season number to match the requested season
-                        // This fixes the issue where API returns episodes with wrong 's' value (e.g. S5 for S1)
-                        const fixedEpisodes = seasonData.episodes.map(ep => ({
-                            ...ep,
-                            s: seasonStr,
-                            // Append season to ID to avoid deduplication if API returns same episodes for different seasons
-                            id: `${ep.id}_${seasonStr}`
-                        }));
-
-                        setAllEpisodes(prev => {
-                            // Filter out nulls from new episodes
-                            const validNewEpisodes = fixedEpisodes.filter(ep => ep !== null);
-
-                            // Merge new episodes, avoiding duplicates
-                            const newEpisodes = validNewEpisodes.filter(newEp =>
-                                !prev.some(existingEp => existingEp && existingEp.id === newEp.id)
-                            );
-                            return [...prev, ...newEpisodes];
-                        });
-
-                        setFetchedSeasons(prev => new Set(prev).add(seasonStr));
-                    }
-                } catch (error) {
-                    console.error("Failed to fetch season episodes", error);
-                    Alert.alert("Error", "Failed to load episodes for this season.");
-                } finally {
-                    setSeasonLoading(false);
-                }
-            }
+        if (!hasEpisodes) {
+            await fetchSeasonEpisodes(seasonStr, details);
         }
     };
 
@@ -213,6 +215,7 @@ const DetailsPage: React.FC<DetailsPageProps> = ({ movieId, onClose, onMoviePres
                     url: streamResult.url,
                     cookies: streamResult.cookies,
                     title: details.title,
+                    referer: streamResult.referer,
                 });
             } else {
                 Alert.alert('Error', 'Failed to get stream URL');
@@ -242,6 +245,7 @@ const DetailsPage: React.FC<DetailsPageProps> = ({ movieId, onClose, onMoviePres
                     url: streamResult.url,
                     cookies: streamResult.cookies,
                     title: `${episode.s}:E${episode.ep} - ${episode.t}`,
+                    referer: streamResult.referer,
                 });
             } else {
                 Alert.alert('Error', 'Failed to get stream URL');
@@ -263,6 +267,7 @@ const DetailsPage: React.FC<DetailsPageProps> = ({ movieId, onClose, onMoviePres
                 videoUrl={videoStream.url}
                 title={videoStream.title}
                 cookies={videoStream.cookies}
+                referer={videoStream.referer}
                 onClose={handleCloseVideo}
             />
         );
@@ -286,8 +291,6 @@ const DetailsPage: React.FC<DetailsPageProps> = ({ movieId, onClose, onMoviePres
             </View>
         );
     }
-
-    // Render functions moved to top
 
     return (
         <View style={styles.container}>

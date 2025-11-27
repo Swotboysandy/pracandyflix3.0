@@ -235,6 +235,7 @@ export interface StreamData {
 export interface StreamResult {
     url: string;
     cookies: string;
+    referer?: string;
 }
 
 export const getStreamUrl = async (
@@ -300,6 +301,7 @@ export const getStreamUrl = async (
                 return {
                     url: streamUrl,
                     cookies: cookies,
+                    referer: `${streamBaseUrl}/`,
                 };
             }
 
@@ -345,6 +347,7 @@ export const getStreamUrl = async (
                 return {
                     url: streamUrl,
                     cookies: cookies,
+                    referer: `${streamBaseUrl}/`,
                 };
             }
 
@@ -405,6 +408,7 @@ export const getStreamUrl = async (
             return {
                 url: streamUrl,
                 cookies: cookies,
+                referer: 'https://net51.cc/',
             };
         }
 
