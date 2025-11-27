@@ -125,6 +125,17 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ videoUrl, title, cookies, onC
         showControlsTemporarily();
     };
 
+    const [resizeMode, setResizeMode] = useState<'contain' | 'cover' | 'stretch'>('contain');
+
+    const toggleResizeMode = () => {
+        setResizeMode(prev => {
+            if (prev === 'contain') return 'cover';
+            if (prev === 'cover') return 'stretch';
+            return 'contain';
+        });
+        showControlsTemporarily();
+    };
+
     return (
         <SafeAreaView style={styles.container} edges={['left', 'right']}>
             <StatusBar hidden={isFullscreen} />
@@ -139,6 +150,9 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ videoUrl, title, cookies, onC
                 }}
                 onDoubleTapLeft={() => handleSkip(-10)}
                 onDoubleTapRight={() => handleSkip(10)}
+            // Ideally we would use a pinch gesture here, but PlayerGestureHandler might need updates.
+            // For now, let's add a button in controls or rely on a specific gesture if supported.
+            // Let's assume we can add a pinch handler or just expose the function to controls.
             >
                 <View style={styles.videoContainer}>
                     <VideoCore
@@ -147,6 +161,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ videoUrl, title, cookies, onC
                         cookies={cookies}
                         paused={paused}
                         rate={playbackRate}
+                        resizeMode={resizeMode}
                         onLoad={handleLoad}
                         onProgress={handleProgress}
                         onAudioTracks={(data) => setAudioTracks(data.audioTracks || [])}
@@ -181,6 +196,8 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ videoUrl, title, cookies, onC
                         }}
                         onToggleFullscreen={() => toggleFullscreen(isFullscreen)}
                         isFullscreen={isFullscreen}
+                        onToggleResizeMode={toggleResizeMode}
+                        resizeMode={resizeMode}
                     />
                 </View>
             </PlayerGestureHandler>

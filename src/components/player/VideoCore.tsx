@@ -1,10 +1,22 @@
 import React, { forwardRef } from 'react';
-import { StyleSheet, View } from 'react-native';
-import Video, { VideoRef, VideoProperties } from 'react-native-video';
+import { StyleSheet } from 'react-native';
+import Video, { VideoRef } from 'react-native-video';
 
-interface VideoCoreProps extends VideoProperties {
+interface VideoCoreProps {
     videoUrl: string;
     cookies: string;
+    paused?: boolean;
+    rate?: number;
+    resizeMode?: 'contain' | 'cover' | 'stretch';
+    onLoad?: (data: any) => void;
+    onProgress?: (data: any) => void;
+    onAudioTracks?: (data: any) => void;
+    onTextTracks?: (data: any) => void;
+    onVideoTracks?: (data: any) => void;
+    selectedAudioTrack?: any;
+    selectedTextTrack?: any;
+    selectedVideoTrack?: any;
+    [key: string]: any;
 }
 
 const VideoCore = forwardRef<VideoRef, VideoCoreProps>(({ videoUrl, cookies, style, ...props }, ref) => {
@@ -21,8 +33,16 @@ const VideoCore = forwardRef<VideoRef, VideoCoreProps>(({ videoUrl, cookies, sty
                 },
             }}
             style={[styles.video, style]}
-            resizeMode="contain"
+            resizeMode={props.resizeMode || "contain"}
             progressUpdateInterval={1000}
+            minLoadRetryCount={5}
+            bufferConfig={{
+                minBufferMs: 15000,
+                maxBufferMs: 50000,
+                bufferForPlaybackMs: 2500,
+                bufferForPlaybackAfterRebufferMs: 5000,
+            }}
+            preventsDisplaySleepDuringVideoPlayback
             {...props}
         />
     );
