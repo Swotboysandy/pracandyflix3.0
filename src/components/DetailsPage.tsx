@@ -52,6 +52,9 @@ const DetailsPage: React.FC<DetailsPageProps> = ({ movieId, onClose, onMoviePres
         setLoading(true);
         const data = await fetchMovieDetails(movieId, isPrimeVideo, isHotstar);
         setDetails(data);
+        if (data?.season && data.season.length > 0) {
+            setSelectedSeason(String(data.season[0].s));
+        }
         setLoading(false);
     };
 
@@ -60,7 +63,16 @@ const DetailsPage: React.FC<DetailsPageProps> = ({ movieId, onClose, onMoviePres
 
         setLoadingStream(true);
         try {
-            const streamResult = await getStreamUrl(movieId, details.title, isPrimeVideo, isHotstar);
+            const streamResult = await getStreamUrl(
+                movieId,
+                details.title,
+                isPrimeVideo,
+                isHotstar,
+                details.type === 't' ? 'tv' : 'movie',
+                undefined,
+                undefined,
+                details.title
+            );
             setLoadingStream(false);
 
             if (streamResult) {
@@ -81,7 +93,16 @@ const DetailsPage: React.FC<DetailsPageProps> = ({ movieId, onClose, onMoviePres
     const handleEpisodePress = async (episode: Episode) => {
         setLoadingStream(true);
         try {
-            const streamResult = await getStreamUrl(episode.id, episode.t, isPrimeVideo, isHotstar);
+            const streamResult = await getStreamUrl(
+                episode.id,
+                episode.t,
+                isPrimeVideo,
+                isHotstar,
+                'tv',
+                parseInt(episode.s),
+                parseInt(episode.ep),
+                details?.title
+            );
             setLoadingStream(false);
 
             if (streamResult) {
@@ -194,6 +215,13 @@ const DetailsPage: React.FC<DetailsPageProps> = ({ movieId, onClose, onMoviePres
                 <View style={styles.titleContainer}>
                     <Text style={styles.title}>{details.title}</Text>
                     <View style={styles.metaInfo}>
+                        {details.provider && (
+                            <View style={[styles.badge, { borderColor: details.provider === 'Netflix' ? '#E50914' : details.provider === 'Prime Video' ? '#00A8E1' : '#1f80e0', marginRight: 8 }]}>
+                                <Text style={[styles.badgeText, { color: details.provider === 'Netflix' ? '#E50914' : details.provider === 'Prime Video' ? '#00A8E1' : '#1f80e0', fontWeight: 'bold' }]}>
+                                    {details.provider}
+                                </Text>
+                            </View>
+                        )}
                         <Text style={styles.match}>{details.match}</Text>
                         <Text style={styles.year}>{details.year}</Text>
                         <View style={styles.badge}>
@@ -278,6 +306,11 @@ const DetailsPage: React.FC<DetailsPageProps> = ({ movieId, onClose, onMoviePres
                 {details.episodes && details.episodes.filter(ep => ep !== null).length > 0 && (
                     <View style={styles.episodesSection}>
                         <Text style={styles.sectionTitle}>Episodes</Text>
+                        {/* Debug Info - Remove later */}
+                        <Text style={{ color: 'yellow', fontSize: 10, marginBottom: 5 }}>
+                            Total Eps: {details.episodes.length}, Selected: {selectedSeason},
+                            First Ep S: {details.episodes[0]?.s}
+                        </Text>
 
                         {/* Season Selector */}
                         {details.season && details.season.length > 1 && (
@@ -310,7 +343,9 @@ const DetailsPage: React.FC<DetailsPageProps> = ({ movieId, onClose, onMoviePres
 
                         {/* Episodes List */}
                         <View style={styles.episodesList}>
-                            {details.episodes.filter(ep => ep !== null).map((episode, index) => renderEpisode(episode, index))}
+                            {details.episodes
+                                .filter(ep => ep !== null && String(ep.s).replace(/[^0-9]/g, '') === String(selectedSeason).replace(/[^0-9]/g, ''))
+                                .map((episode, index) => renderEpisode(episode, index))}
                         </View>
                     </View>
                 )}

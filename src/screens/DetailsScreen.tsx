@@ -15,13 +15,6 @@ const DetailsScreen: React.FC<Props> = ({ route, navigation }) => {
             isHotstar={isHotstar}
             onClose={() => navigation.goBack()}
             onMoviePress={(id) => navigation.push('Details', { movieId: id })}
-            onPlay={(url, title, cookies) => {
-                navigation.navigate('Player', {
-                    videoUrl: url,
-                    title: title,
-                    cookies: cookies,
-                });
-            }}
         />
     );
 };
