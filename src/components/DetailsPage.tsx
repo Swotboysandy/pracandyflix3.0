@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import {
     View,
     Text,
@@ -86,11 +86,12 @@ const DetailsPage: React.FC<DetailsPageProps> = ({ movieId, onClose, onMoviePres
             // Find the season object to get its ID
             const seasonObj = details.season.find(s => String(s.s) === String(seasonStr));
 
-            if (seasonObj && seasonObj.id) {
+            if (seasonObj) {
                 setSeasonLoading(true);
                 try {
-                    // Fetch details for this specific season using the season ID
-                    const seasonData = await fetchMovieDetails(seasonObj.id, providerId);
+                    // Fetch details for this specific season using the main movie ID and season number
+                    // We use details.id (or movieId) and pass the season number as the 3rd argument
+                    const seasonData = await fetchMovieDetails(movieId, providerId, seasonStr);
 
                     if (seasonData && seasonData.episodes) {
                         setAllEpisodes(prev => {
@@ -230,7 +231,7 @@ const DetailsPage: React.FC<DetailsPageProps> = ({ movieId, onClose, onMoviePres
         );
     }
 
-    const renderEpisode = (episode: Episode, index: number) => (
+    const renderEpisode = useCallback((episode: Episode, index: number) => (
         <TouchableOpacity key={episode.id} style={styles.episodeCard} onPress={() => handleEpisodePress(episode)}>
             <View style={styles.episodeNumber}>
                 <Text style={styles.episodeNumberText}>{episode.ep}</Text>
@@ -245,9 +246,9 @@ const DetailsPage: React.FC<DetailsPageProps> = ({ movieId, onClose, onMoviePres
                 </Text>
             </View>
         </TouchableOpacity>
-    );
+    ), [handleEpisodePress]);
 
-    const renderSuggestion = (movie: SuggestedMovie) => (
+    const renderSuggestion = useCallback((movie: SuggestedMovie) => (
         <TouchableOpacity
             key={movie.id}
             style={styles.suggestionCard}
@@ -268,7 +269,7 @@ const DetailsPage: React.FC<DetailsPageProps> = ({ movieId, onClose, onMoviePres
                 </Text>
             </View>
         </TouchableOpacity>
-    );
+    ), [onMoviePress]);
 
     return (
         <View style={styles.container}>

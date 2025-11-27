@@ -131,7 +131,7 @@ export interface MovieDetails {
     provider?: string;
 }
 
-export const fetchMovieDetails = async (id: string, providerId: string = 'Netflix'): Promise<MovieDetails | null> => {
+export const fetchMovieDetails = async (id: string, providerId: string = 'Netflix', season?: string): Promise<MovieDetails | null> => {
     try {
         // 1. Fetch Cookies
         const cookieResponse = await axios.get(COOKIE_URL);
@@ -152,6 +152,10 @@ export const fetchMovieDetails = async (id: string, providerId: string = 'Netfli
         } else {
             url = `${baseUrl}/post.php?id=${id}&t=${time}`;
             referer = `${baseUrl}/home`;
+        }
+
+        if (season) {
+            url += `&s=${season}`;
         }
 
         const response = await axios.get(url, {
