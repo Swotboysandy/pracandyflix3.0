@@ -7,11 +7,14 @@ import {
     ActivityIndicator,
     Image,
     TouchableOpacity,
+    Text,
+    Modal,
+    FlatList,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
-import { fetchHomeData, Section, Movie } from '../services/api';
+import { fetchHomeData, fetchProviders, Section, Movie, Provider } from '../services/api';
 import Row from '../components/Row';
 import MovieItem from '../components/MovieItem';
 import { RootStackParamList } from '../navigation/types';
@@ -23,10 +26,19 @@ const HomeScreen = ({ route }: any) => {
     const [sections, setSections] = useState<Section[]>([]);
     const [loading, setLoading] = useState(true);
     const [heroMovie, setHeroMovie] = useState<Movie | null>(null);
+    const [providers, setProviders] = useState<Provider[]>([]);
+    const [selectedProvider, setSelectedProvider] = useState<string>('Netflix');
+    const [isProviderModalVisible, setProviderModalVisible] = useState(false);
 
     useEffect(() => {
+        loadProviders();
         loadData();
     }, []);
+
+    const loadProviders = async () => {
+        const data = await fetchProviders();
+        setProviders(data);
+    };
 
     const loadData = async () => {
         const data = await fetchHomeData();
@@ -72,8 +84,7 @@ const HomeScreen = ({ route }: any) => {
     const handleMoviePress = (movie: Movie) => {
         navigation.navigate('Details', {
             movieId: movie.id,
-            isPrimeVideo: movie.isPrimeVideo,
-            isHotstar: movie.isHotstar,
+            providerId: selectedProvider,
         });
     };
 
@@ -91,7 +102,7 @@ const HomeScreen = ({ route }: any) => {
 
             {/* Top Bar */}
             <View style={styles.topBar}>
-                <TouchableOpacity>
+                <TouchableOpacity onPress={() => setProviderModalVisible(true)}>
                     <Image source={{ uri: 'https://img.icons8.com/ios-filled/50/ffffff/menu--v1.png' }} style={styles.icon} />
                 </TouchableOpacity>
                 <TouchableOpacity onPress={() => navigation.navigate('Search')}>
@@ -99,11 +110,59 @@ const HomeScreen = ({ route }: any) => {
                 </TouchableOpacity>
             </View>
 
+            {/* Provider Selection Modal */}
+            <Modal
+                visible={isProviderModalVisible}
+                transparent={true}
+                animationType="slide"
+                onRequestClose={() => setProviderModalVisible(false)}
+            >
+                <View style={styles.modalContainer}>
+                    <View style={styles.modalContent}>
+                        <Text style={styles.modalTitle}>Select Provider</Text>
+                        <FlatList
+                            data={providers}
+                            keyExtractor={(item) => item.id}
+                            renderItem={({ item }) => (
+                                <TouchableOpacity
+                                    style={[
+                                        styles.modalItem,
+                                        selectedProvider === item.id && styles.modalItemActive
+                                    ]}
+                                    onPress={() => {
+                                        setSelectedProvider(item.id);
+                                        setProviderModalVisible(false);
+                                    }}
+                                >
+                                    <Text style={[
+                                        styles.modalItemText,
+                                        selectedProvider === item.id && styles.modalItemTextActive
+                                    ]}>
+                                        {item.name}
+                                    </Text>
+                                    {selectedProvider === item.id && (
+                                        <Text style={styles.checkmark}>✓</Text>
+                                    )}
+                                </TouchableOpacity>
+                            )}
+                        />
+                        <TouchableOpacity
+                            style={styles.closeModalButton}
+                            onPress={() => setProviderModalVisible(false)}
+                        >
+                            <Text style={styles.closeModalText}>Close</Text>
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            </Modal>
+
             <ScrollView
                 contentInsetAdjustmentBehavior="automatic"
                 style={styles.scrollView}
                 contentContainerStyle={styles.scrollContent}
             >
+
+
                 {heroMovie && (
                     <View style={styles.heroWrapper}>
                         <MovieItem movie={heroMovie} onPress={handleMoviePress} isHero />
@@ -140,12 +199,7 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
         alignItems: 'center',
         paddingHorizontal: 20,
-        paddingTop: 10,
-        paddingBottom: 10,
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        right: 0,
+        paddingVertical: 10,
         zIndex: 10,
     },
     icon: {
@@ -165,6 +219,92 @@ const styles = StyleSheet.create({
     },
     rowsContainer: {
         paddingBottom: 20,
+    },
+    providerContainer: {
+        paddingVertical: 10,
+        marginBottom: 10,
+    },
+    providerList: {
+        paddingHorizontal: 20,
+        gap: 10,
+    },
+    providerButton: {
+        paddingHorizontal: 16,
+        paddingVertical: 8,
+        borderRadius: 20,
+        backgroundColor: '#333',
+        borderWidth: 1,
+        borderColor: '#555',
+    },
+    providerButtonActive: {
+        backgroundColor: '#E50914',
+        borderColor: '#E50914',
+    },
+    providerText: {
+        color: '#ccc',
+        fontSize: 14,
+        fontWeight: '600',
+    },
+    providerTextActive: {
+        color: '#fff',
+    },
+    modalContainer: {
+        flex: 1,
+        backgroundColor: 'rgba(0,0,0,0.8)',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    modalContent: {
+        width: '80%',
+        backgroundColor: '#1a1a1a',
+        borderRadius: 10,
+        padding: 20,
+        maxHeight: '70%',
+    },
+    modalTitle: {
+        color: '#fff',
+        fontSize: 20,
+        fontWeight: 'bold',
+        marginBottom: 20,
+        textAlign: 'center',
+    },
+    modalItem: {
+        paddingVertical: 15,
+        borderBottomWidth: 1,
+        borderBottomColor: '#333',
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+    },
+    modalItemActive: {
+        backgroundColor: '#333',
+        paddingHorizontal: 10,
+        borderRadius: 5,
+    },
+    modalItemText: {
+        color: '#ccc',
+        fontSize: 16,
+    },
+    modalItemTextActive: {
+        color: '#fff',
+        fontWeight: 'bold',
+    },
+    checkmark: {
+        color: '#E50914',
+        fontSize: 18,
+        fontWeight: 'bold',
+    },
+    closeModalButton: {
+        marginTop: 20,
+        backgroundColor: '#E50914',
+        padding: 12,
+        borderRadius: 5,
+        alignItems: 'center',
+    },
+    closeModalText: {
+        color: '#fff',
+        fontWeight: 'bold',
+        fontSize: 16,
     },
 });
 
