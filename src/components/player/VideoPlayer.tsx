@@ -1,226 +1,381 @@
-import React, { useRef, useState, useEffect, useCallback } from 'react';
-import { View, StyleSheet, StatusBar, BackHandler } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { VideoRef, SelectedTrackType, SelectedVideoTrackType } from 'react-native-video';
-
+import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { View, StyleSheet, StatusBar, BackHandler, AppState } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import VideoCore from './VideoCore';
 import ControlsOverlay from './ControlsOverlay';
-import PlayerGestureHandler from './GestureHandler';
 import SettingsModal from './SettingsModal';
-import { setupOrientationListeners, enterFullscreen, exitFullscreen, toggleFullscreen } from './FullscreenHandler';
+import { enterFullscreen, exitFullscreen } from './FullscreenHandler';
+import { StreamSource, StreamTrack } from '../../services/api';
 
 interface VideoPlayerProps {
     videoUrl: string;
     title: string;
     cookies: string;
+    referer?: string;
+    sources?: StreamSource[];
+    tracks?: StreamTrack[];
     onClose: () => void;
+    onNextEpisode?: () => void;
 }
 
-const VideoPlayer: React.FC<VideoPlayerProps> = ({ videoUrl, title, cookies, onClose }) => {
-    const playerRef = useRef<VideoRef | null>(null);
+const VideoPlayer: React.FC<VideoPlayerProps> = ({ videoUrl, title, cookies, referer, sources, tracks, onClose, onNextEpisode }) => {
+    const videoRef = useRef<any>(null);
 
-    // State
-    const [loading, setLoading] = useState(true);
+    // Player State
     const [paused, setPaused] = useState(false);
-    const [showControls, setShowControls] = useState(true);
-    const [showSettings, setShowSettings] = useState(false);
+    const [loading, setLoading] = useState(true);
     const [currentTime, setCurrentTime] = useState(0);
     const [duration, setDuration] = useState(0);
+    const [resizeMode, setResizeMode] = useState<'contain' | 'cover' | 'stretch'>('contain');
     const [isFullscreen, setIsFullscreen] = useState(false);
+    const [controlsVisible, setControlsVisible] = useState(true);
 
-    // Tracks & Settings
-    const [audioTracks, setAudioTracks] = useState<any[]>([]);
-    const [textTracks, setTextTracks] = useState<any[]>([]);
-    const [videoTracks, setVideoTracks] = useState<any[]>([]);
+    // Settings State
+    const [currentVideoUrl, setCurrentVideoUrl] = useState(videoUrl);
+    const [selectedSource, setSelectedSource] = useState<StreamSource | undefined>(undefined);
+    const [selectedTextTrack, setSelectedTextTrack] = useState<StreamTrack | null>(null);
+    const [selectedAudioTrack, setSelectedAudioTrack] = useState<StreamTrack | null>(null);
+    const [playbackSpeed, setPlaybackSpeed] = useState(1.0);
+    const [settingsVisible, setSettingsVisible] = useState(false);
+    const [pipEnabled, setPipEnabled] = useState(false);
 
-    const [selectedAudioTrack, setSelectedAudioTrack] = useState(0);
-    const [selectedTextTrack, setSelectedTextTrack] = useState(1000); // 1000 = disabled
-    const [selectedVideoTrack, setSelectedVideoTrack] = useState<any>({ type: SelectedVideoTrackType.AUTO });
-    const [playbackRate, setPlaybackRate] = useState(1.0);
+    // Local tracks state to merge API tracks and detected tracks
+    const [localTracks, setLocalTracks] = useState<StreamTrack[]>(tracks || []);
 
-    const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+    const controlsTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const lastSaveTimeRef = useRef<number>(0);
+    const initialSeekDoneRef = useRef(false);
 
-    // Orientation & Fullscreen
     useEffect(() => {
-        const removeListener = setupOrientationListeners((orientation) => {
-            if (orientation === 'LANDSCAPE-LEFT' || orientation === 'LANDSCAPE-RIGHT') {
-                setIsFullscreen(true);
-                StatusBar.setHidden(true);
-            } else if (orientation === 'PORTRAIT') {
-                setIsFullscreen(false);
-                StatusBar.setHidden(false);
-            }
-        });
-
-        // Auto-enter fullscreen on mount
-        enterFullscreen();
-
+        if (!pipEnabled) {
+            enterFullscreen();
+            setIsFullscreen(true);
+        }
         return () => {
-            removeListener();
             exitFullscreen();
         };
-    }, []);
+    }, [pipEnabled]);
 
-    // Back Handler
     useEffect(() => {
         const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
-            if (isFullscreen) {
-                exitFullscreen();
+            if (settingsVisible) {
+                setSettingsVisible(false);
+                return true;
+            }
+            if (pipEnabled) {
+                setPipEnabled(false);
                 return true;
             }
             onClose();
             return true;
         });
-        return () => backHandler.remove();
-    }, [isFullscreen, onClose]);
 
-    // Controls Visibility
-    const showControlsTemporarily = useCallback(() => {
-        setShowControls(true);
-        if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
-        if (!paused) {
-            controlsTimeoutRef.current = setTimeout(() => setShowControls(false), 3000);
-        }
-    }, [paused]);
-
-    useEffect(() => {
-        showControlsTemporarily();
         return () => {
+            backHandler.remove();
             if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
         };
-    }, [showControlsTemporarily]);
+    }, [onClose, settingsVisible, pipEnabled]);
 
-    // Handlers
-    const handleLoad = (data: any) => {
+    // Initialize selected source if sources are available
+    useEffect(() => {
+        if (sources && sources.length > 0) {
+            // Try to find the source matching the initial videoUrl, or default to the first one/auto
+            const match = sources.find(s => s.file === videoUrl);
+            setSelectedSource(match || sources[0]);
+        }
+        // Initialize local tracks from props
+        if (tracks) {
+            setLocalTracks(tracks);
+        }
+    }, [sources, videoUrl, tracks]);
+
+    // Resume Playback Logic
+    useEffect(() => {
+        const loadProgress = async () => {
+            try {
+                const savedTime = await AsyncStorage.getItem(`progress_${videoUrl}`);
+                if (savedTime && videoRef.current) {
+                    const time = parseFloat(savedTime);
+                    if (time > 0) {
+                        console.log('Resuming from:', time);
+                        // We'll seek when onLoad fires or if player is ready
+                    }
+                }
+            } catch (error) {
+                console.error('Failed to load progress', error);
+            }
+        };
+        loadProgress();
+    }, [videoUrl]);
+
+    const saveProgress = async (time: number) => {
+        try {
+            await AsyncStorage.setItem(`progress_${videoUrl}`, time.toString());
+        } catch (error) {
+            console.error('Failed to save progress', error);
+        }
+    };
+
+    const resetControlsTimeout = useCallback(() => {
+        if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
+        setControlsVisible(true);
+        if (!paused && !settingsVisible) {
+            controlsTimeoutRef.current = setTimeout(() => {
+                setControlsVisible(false);
+            }, 4000);
+        }
+    }, [paused, settingsVisible]);
+
+    useEffect(() => {
+        resetControlsTimeout();
+    }, [resetControlsTimeout]);
+
+    const handleLoad = async (data: any) => {
         setDuration(data.duration);
         setLoading(false);
-        showControlsTemporarily();
+        resetControlsTimeout();
+
+        console.log('Video Loaded. Data:', JSON.stringify({
+            duration: data.duration,
+            audioTracks: data.audioTracks,
+            textTracks: data.textTracks
+        }, null, 2));
+
+        // Merge detected tracks with API tracks
+        let newTracks: StreamTrack[] = [...(tracks || [])];
+
+        // Process Audio Tracks
+        if (data.audioTracks && Array.isArray(data.audioTracks)) {
+            const detectedAudio = data.audioTracks.map((track: any, index: number) => ({
+                file: track.uri || `audio_${index}`, // URI might be empty for embedded tracks
+                label: track.title || track.language || `Audio ${index + 1}`,
+                kind: 'audio',
+                default: track.selected
+            }));
+
+            // Avoid duplicates if API already provided them (simple check by label)
+            detectedAudio.forEach((dt: StreamTrack) => {
+                if (!newTracks.some(t => t.kind === 'audio' && t.label === dt.label)) {
+                    newTracks.push(dt);
+                }
+            });
+        }
+
+        // Process Text Tracks
+        if (data.textTracks && Array.isArray(data.textTracks)) {
+            const detectedSubs = data.textTracks.map((track: any, index: number) => ({
+                file: track.uri || `sub_${index}`,
+                label: track.title || track.language || `Subtitle ${index + 1}`,
+                kind: 'subtitles', // or captions
+                default: track.selected
+            }));
+
+            detectedSubs.forEach((dt: StreamTrack) => {
+                if (!newTracks.some(t => t.kind !== 'audio' && t.label === dt.label)) {
+                    newTracks.push(dt);
+                }
+            });
+        }
+
+        // Update state if we found new tracks
+        if (newTracks.length > 0) {
+            console.log('Updated tracks from stream:', newTracks);
+            setLocalTracks(newTracks);
+        }
+
+        // Resume playback
+        if (!initialSeekDoneRef.current) {
+            try {
+                const savedTime = await AsyncStorage.getItem(`progress_${videoUrl}`);
+                if (savedTime) {
+                    const time = parseFloat(savedTime);
+                    // Only resume if not near the end (e.g., > 95%)
+                    if (time < data.duration * 0.95) {
+                        videoRef.current?.seek(time);
+                    }
+                }
+            } catch (e) {
+                console.log('Error resuming:', e);
+            }
+            initialSeekDoneRef.current = true;
+        }
     };
 
     const handleProgress = (data: any) => {
         setCurrentTime(data.currentTime);
-    };
 
-    const handleSkip = (seconds: number) => {
-        if (playerRef.current) {
-            let newTime = currentTime + seconds;
-            if (newTime < 0) newTime = 0;
-            if (newTime > duration) newTime = duration;
-            playerRef.current.seek(newTime);
-            setCurrentTime(newTime);
-            showControlsTemporarily();
+        // Save progress every 5 seconds
+        const now = Date.now();
+        if (now - lastSaveTimeRef.current > 5000) {
+            saveProgress(data.currentTime);
+            lastSaveTimeRef.current = now;
         }
     };
 
-    const handleSeek = (value: number) => {
-        if (playerRef.current) {
-            playerRef.current.seek(value);
-            setCurrentTime(value);
-            showControlsTemporarily();
-        }
-    };
-
-    const togglePlayPause = () => {
+    const handlePlayPause = () => {
         setPaused(!paused);
-        showControlsTemporarily();
+        resetControlsTimeout();
     };
 
-    const [resizeMode, setResizeMode] = useState<'contain' | 'cover' | 'stretch'>('contain');
-
-    const toggleResizeMode = () => {
-        setResizeMode(prev => {
-            if (prev === 'contain') return 'cover';
-            if (prev === 'cover') return 'stretch';
-            return 'contain';
-        });
-        showControlsTemporarily();
+    const handleSeek = (time: number) => {
+        if (videoRef.current) {
+            videoRef.current.seek(time);
+            setCurrentTime(time);
+            resetControlsTimeout();
+            saveProgress(time); // Save on seek
+        }
     };
+
+    const handleSkipForward = () => {
+        handleSeek(Math.min(currentTime + 10, duration));
+    };
+
+    const handleSkipBackward = () => {
+        handleSeek(Math.max(currentTime - 10, 0));
+    };
+
+    const handleToggleResizeMode = () => {
+        const modes: ('contain' | 'cover' | 'stretch')[] = ['contain', 'cover', 'stretch'];
+        const nextIndex = (modes.indexOf(resizeMode) + 1) % modes.length;
+        setResizeMode(modes[nextIndex]);
+        resetControlsTimeout();
+    };
+
+    const handleToggleFullscreen = () => {
+        if (isFullscreen) {
+            exitFullscreen();
+        } else {
+            enterFullscreen();
+        }
+        setIsFullscreen(!isFullscreen);
+    };
+
+    const handleScreenTap = () => {
+        if (settingsVisible) {
+            setSettingsVisible(false);
+            return;
+        }
+        if (controlsVisible) {
+            setControlsVisible(false);
+        } else {
+            resetControlsTimeout();
+        }
+    };
+
+    const handlePiP = () => {
+        setPipEnabled(!pipEnabled);
+    };
+
+    const handlePiPStatusChanged = (isActive: boolean) => {
+        setPipEnabled(isActive);
+    };
+
+    // Settings Handlers
+    const handleSelectSource = (source: StreamSource) => {
+        setSelectedSource(source);
+        setCurrentVideoUrl(source.file);
+    };
+
+    const handleSelectTextTrack = (track: StreamTrack | null) => {
+        setSelectedTextTrack(track);
+    };
+
+    const handleSelectAudioTrack = (track: StreamTrack | null) => {
+        setSelectedAudioTrack(track);
+    };
+
+    const handleSelectSpeed = (speed: number) => {
+        setPlaybackSpeed(speed);
+    };
+
+    // Map tracks for react-native-video
+    const textTracks = localTracks?.filter(t => t.kind !== 'audio').map(track => ({
+        title: track.label || 'Unknown',
+        language: (track.label || 'en').substring(0, 2).toLowerCase(),
+        type: track.kind === 'captions' ? 'application/x-subrip' : 'text/vtt',
+        uri: track.file
+    }));
+
+    const selectedTextTrackProp = selectedTextTrack ? {
+        type: 'title',
+        value: selectedTextTrack.label || 'Unknown'
+    } : {
+        type: 'disabled',
+        value: ''
+    };
+
+    const selectedAudioTrackProp = selectedAudioTrack ? {
+        type: 'title',
+        value: selectedAudioTrack.label || 'Unknown'
+    } : undefined;
 
     return (
-        <SafeAreaView style={styles.container} edges={['left', 'right']}>
-            <StatusBar hidden={isFullscreen} />
+        <View style={styles.container} onTouchEnd={handleScreenTap}>
+            <StatusBar hidden={!pipEnabled} />
+            <VideoCore
+                ref={videoRef}
+                videoUrl={currentVideoUrl}
+                cookies={cookies}
+                referer={referer}
+                paused={paused}
+                resizeMode={resizeMode}
+                rate={playbackSpeed}
+                onLoad={handleLoad}
+                onProgress={handleProgress}
+                onEnd={onClose}
+                onError={(e: any) => console.log('Video Error:', e)}
+                onBuffer={(e: any) => setLoading(e.isBuffering)}
+                textTracks={textTracks}
+                selectedTextTrack={selectedTextTrackProp}
+                selectedAudioTrack={selectedAudioTrackProp}
+                pictureInPicture={pipEnabled}
+                onPictureInPictureStatusChanged={(data: any) => handlePiPStatusChanged(data.isActive)}
+            />
 
-            <PlayerGestureHandler
-                onSingleTap={() => {
-                    if (showControls) {
-                        setShowControls(false);
-                    } else {
-                        showControlsTemporarily();
-                    }
-                }}
-                onDoubleTapLeft={() => handleSkip(-10)}
-                onDoubleTapRight={() => handleSkip(10)}
-            // Ideally we would use a pinch gesture here, but PlayerGestureHandler might need updates.
-            // For now, let's add a button in controls or rely on a specific gesture if supported.
-            // Let's assume we can add a pinch handler or just expose the function to controls.
-            >
-                <View style={styles.videoContainer}>
-                    <VideoCore
-                        ref={playerRef}
-                        videoUrl={videoUrl}
-                        cookies={cookies}
-                        paused={paused}
-                        rate={playbackRate}
-                        resizeMode={resizeMode}
-                        onLoad={handleLoad}
-                        onProgress={handleProgress}
-                        onAudioTracks={(data) => setAudioTracks(data.audioTracks || [])}
-                        onTextTracks={(data) => setTextTracks(data.textTracks || [])}
-                        onVideoTracks={(data) => setVideoTracks(data.videoTracks || [])}
-                        selectedAudioTrack={{
-                            type: SelectedTrackType.INDEX,
-                            value: selectedAudioTrack,
-                        }}
-                        selectedTextTrack={{
-                            type: selectedTextTrack === 1000 ? SelectedTrackType.DISABLED : SelectedTrackType.INDEX,
-                            value: selectedTextTrack === 1000 ? undefined : selectedTextTrack,
-                        }}
-                        selectedVideoTrack={selectedVideoTrack}
-                    />
-
-                    <ControlsOverlay
-                        visible={showControls}
-                        paused={paused}
-                        loading={loading}
-                        title={title}
-                        currentTime={currentTime}
-                        duration={duration}
-                        onPlayPause={togglePlayPause}
-                        onSkipForward={() => handleSkip(10)}
-                        onSkipBackward={() => handleSkip(-10)}
-                        onSeek={handleSeek}
-                        onClose={onClose}
-                        onSettings={() => {
-                            setShowSettings(true);
-                            setShowControls(false);
-                        }}
-                        onToggleFullscreen={() => toggleFullscreen(isFullscreen)}
-                        isFullscreen={isFullscreen}
-                        onToggleResizeMode={toggleResizeMode}
-                        resizeMode={resizeMode}
-                    />
-                </View>
-            </PlayerGestureHandler>
+            {!pipEnabled && (
+                <ControlsOverlay
+                    visible={controlsVisible && !settingsVisible}
+                    paused={paused}
+                    loading={loading}
+                    title={title}
+                    currentTime={currentTime}
+                    duration={duration}
+                    onPlayPause={handlePlayPause}
+                    onSkipForward={handleSkipForward}
+                    onSkipBackward={handleSkipBackward}
+                    onSeek={handleSeek}
+                    onClose={onClose}
+                    onSettings={() => {
+                        setSettingsVisible(true);
+                        setControlsVisible(false);
+                    }}
+                    onToggleFullscreen={handleToggleFullscreen}
+                    isFullscreen={isFullscreen}
+                    onToggleResizeMode={handleToggleResizeMode}
+                    resizeMode={resizeMode}
+                    onNextEpisode={onNextEpisode}
+                    onPiP={handlePiP}
+                />
+            )}
 
             <SettingsModal
-                visible={showSettings}
+                visible={settingsVisible}
                 onClose={() => {
-                    setShowSettings(false);
-                    showControlsTemporarily();
+                    setSettingsVisible(false);
+                    setControlsVisible(true);
                 }}
-                audioTracks={audioTracks}
-                textTracks={textTracks}
-                videoTracks={videoTracks}
-                selectedAudioTrack={selectedAudioTrack}
+                sources={sources}
+                tracks={localTracks} // Use localTracks here
+                selectedSource={selectedSource}
                 selectedTextTrack={selectedTextTrack}
-                selectedVideoTrack={selectedVideoTrack}
-                playbackRate={playbackRate}
-                onSelectAudioTrack={setSelectedAudioTrack}
-                onSelectTextTrack={setSelectedTextTrack}
-                onSelectVideoTrack={setSelectedVideoTrack}
-                onSelectPlaybackRate={setPlaybackRate}
+                selectedAudioTrack={selectedAudioTrack}
+                playbackSpeed={playbackSpeed}
+                onSelectSource={handleSelectSource}
+                onSelectTextTrack={handleSelectTextTrack}
+                onSelectAudioTrack={handleSelectAudioTrack}
+                onSelectSpeed={handleSelectSpeed}
             />
-        </SafeAreaView>
+        </View>
     );
 };
 
@@ -228,11 +383,6 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: '#000',
-    },
-    videoContainer: {
-        flex: 1,
-        backgroundColor: '#000',
-        justifyContent: 'center',
     },
 });
 

@@ -67,7 +67,7 @@ export const fetchHomeData = async (): Promise<Section[]> => {
 
         return [];
     } catch (error) {
-        console.error('Error fetching data:', error);
+        console.warn('Error fetching data:', error);
         return [];
     }
 };
@@ -131,7 +131,7 @@ export interface MovieDetails {
     provider?: string;
 }
 
-export const fetchMovieDetails = async (id: string, providerId: string = 'Netflix'): Promise<MovieDetails | null> => {
+export const fetchMovieDetails = async (id: string, providerId: string = 'Netflix', season?: string): Promise<MovieDetails | null> => {
     try {
         // 1. Fetch Cookies
         const cookieResponse = await axios.get(COOKIE_URL);
@@ -142,11 +142,14 @@ export const fetchMovieDetails = async (id: string, providerId: string = 'Netfli
         const baseUrl = 'https://net20.cc';
         let url: string;
         let referer: string;
+        let basePath = '';
 
         if (providerId === 'Hotstar') {
+            basePath = '/hs';
             url = `${baseUrl}/hs/post.php?id=${id}&t=${time}`;
             referer = `${baseUrl}/hs/home`;
         } else if (providerId === 'Prime') {
+            basePath = '/pv';
             url = `${baseUrl}/pv/post.php?id=${id}&t=${time}`;
             referer = `${baseUrl}/pv/home`;
         } else {
@@ -154,20 +157,61 @@ export const fetchMovieDetails = async (id: string, providerId: string = 'Netfli
             referer = `${baseUrl}/home`;
         }
 
-        const response = await axios.get(url, {
-            headers: {
-                'Cookie': cookie,
-                'Referer': referer,
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-            },
-        });
+        // Note: We do NOT append &s= to post.php anymore, as we handle season fetching via episodes.php
 
-        if (response.data && response.data.status === 'y') {
-            const data = response.data;
+        const headers = {
+            'Cookie': cookie,
+            'Referer': referer,
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+        };
 
-            // Set provider
-            data.provider = providerId;
-            return data;
+        const response = await axios.get(url, { headers });
+
+        if (response.data) {
+            let data = response.data;
+
+            // Handle nested 'movie' object if present
+            if (data.movie) {
+                data = data.movie;
+            }
+
+            // Basic validation to ensure we have some data
+            if (data.id || data.title || data.episodes) {
+                // Set provider
+                data.provider = providerId;
+
+                // 3. Handle Season Selection
+                if (season && data.season && Array.isArray(data.season)) {
+                    // Find the season ID for the requested season number
+                    // season arg might be "1" or "Season 1" or the ID itself.
+                    const targetSeason = data.season.find((s: any) =>
+                        String(s.s) === String(season) ||
+                        String(s.id) === String(season) ||
+                        `Season ${s.s}` === season
+                    );
+
+                    if (targetSeason) {
+                        console.log(`fetchMovieDetails: Fetching episodes for season ${season} (ID: ${targetSeason.id})`);
+                        const episodesUrl = `${baseUrl}${basePath}/episodes.php?s=${targetSeason.id}&t=${time}&page=1`;
+
+                        try {
+                            const epResponse = await axios.get(episodesUrl, { headers });
+                            if (epResponse.data && epResponse.data.episodes) {
+                                console.log(`fetchMovieDetails: Found ${epResponse.data.episodes.length} episodes for season ${season}`);
+                                data.episodes = epResponse.data.episodes;
+                            } else {
+                                console.log('fetchMovieDetails: No episodes found in season response');
+                            }
+                        } catch (epError) {
+                            console.error('fetchMovieDetails: Error fetching season episodes:', epError);
+                        }
+                    } else {
+                        console.log(`fetchMovieDetails: Season ${season} not found in season list`);
+                    }
+                }
+
+                return data;
+            }
         }
 
         return null;
@@ -183,14 +227,25 @@ export interface StreamSource {
     type?: string;
 }
 
+export interface StreamTrack {
+    file: string;
+    label: string;
+    kind: string;
+    default?: boolean;
+}
+
 export interface StreamData {
     sources: StreamSource[];
+    tracks?: StreamTrack[];
     title?: string;
 }
 
 export interface StreamResult {
-    url: string;
+    url: string; // Keep for backward compatibility or primary stream
+    sources?: StreamSource[];
+    tracks?: StreamTrack[];
     cookies: string;
+    referer?: string;
 }
 
 export const getStreamUrl = async (
@@ -255,7 +310,10 @@ export const getStreamUrl = async (
 
                 return {
                     url: streamUrl,
+                    sources: data.sources,
+                    tracks: data.tracks,
                     cookies: cookies,
+                    referer: `${streamBaseUrl}/`,
                 };
             }
 
@@ -300,7 +358,10 @@ export const getStreamUrl = async (
 
                 return {
                     url: streamUrl,
+                    sources: data.sources,
+                    tracks: data.tracks,
                     cookies: cookies,
+                    referer: `${streamBaseUrl}/`,
                 };
             }
 
@@ -360,7 +421,10 @@ export const getStreamUrl = async (
 
             return {
                 url: streamUrl,
+                sources: data.sources,
+                tracks: data.tracks,
                 cookies: cookies,
+                referer: 'https://net51.cc/',
             };
         }
 

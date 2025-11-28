@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import {
     View,
     Text,
@@ -29,10 +29,12 @@ const DetailsPage: React.FC<DetailsPageProps> = ({ movieId, onClose, onMoviePres
     const [loading, setLoading] = useState(true);
     const [selectedSeason, setSelectedSeason] = useState<string>('1');
     const [loadingStream, setLoadingStream] = useState(false);
-    const [videoStream, setVideoStream] = useState<{ url: string; cookies: string; title: string } | null>(null);
+    const [videoStream, setVideoStream] = useState<{ url: string; cookies: string; title: string; referer?: string; sources?: any[]; tracks?: any[] } | null>(null);
     const [allEpisodes, setAllEpisodes] = useState<Episode[]>([]);
     const [fetchedSeasons, setFetchedSeasons] = useState<Set<string>>(new Set());
     const [seasonLoading, setSeasonLoading] = useState(false);
+
+    const [currentEpisode, setCurrentEpisode] = useState<Episode | null>(null);
 
     useEffect(() => {
         loadDetails();
@@ -50,69 +52,128 @@ const DetailsPage: React.FC<DetailsPageProps> = ({ movieId, onClose, onMoviePres
         return () => backHandler.remove();
     }, [onClose, videoStream]);
 
+    const renderEpisode = useCallback((episode: Episode, index: number) => (
+        <TouchableOpacity key={episode.id} style={styles.episodeCard} onPress={() => handleEpisodePress(episode)}>
+            <View style={styles.episodeNumber}>
+                <Text style={styles.episodeNumberText}>{episode.ep}</Text>
+            </View>
+            <View style={styles.episodeInfo}>
+                <View style={styles.episodeHeader}>
+                    <Text style={styles.episodeTitle}>{episode.t}</Text>
+                    <Text style={styles.episodeTime}>{episode.time}</Text>
+                </View>
+                <Text style={styles.episodeDesc} numberOfLines={3}>
+                    {episode.ep_desc}
+                </Text>
+            </View>
+        </TouchableOpacity>
+    ), []);
+
+    const renderSuggestion = useCallback((movie: SuggestedMovie) => (
+        <TouchableOpacity
+            key={movie.id}
+            style={styles.suggestionCard}
+            onPress={() => onMoviePress({ id: movie.id, title: movie.t, imageUrl: `https://imgcdn.kim/poster/341/${movie.id}.jpg` })}
+        >
+            <Image
+                source={{ uri: `https://imgcdn.kim/poster/341/${movie.id}.jpg` }}
+                style={styles.suggestionImage}
+            />
+            <View style={styles.suggestionInfo}>
+                <View style={styles.suggestionHeader}>
+                    <Text style={styles.suggestionMatch}>{movie.m}</Text>
+                    <Text style={styles.suggestionYear}>{movie.y}</Text>
+                </View>
+                <Text style={styles.suggestionRuntime}>{movie.t}</Text>
+                <Text style={styles.suggestionDesc} numberOfLines={3}>
+                    {movie.d}
+                </Text>
+            </View>
+        </TouchableOpacity>
+    ), [onMoviePress]);
+
     const loadDetails = async () => {
         setLoading(true);
         const data = await fetchMovieDetails(movieId, providerId);
         setDetails(data);
 
+        let initialEpisodes: Episode[] = [];
         if (data?.episodes) {
             // Filter out nulls
-            const validEpisodes = data.episodes.filter(ep => ep !== null);
-            setAllEpisodes(validEpisodes);
+            initialEpisodes = data.episodes.filter(ep => ep !== null);
+            setAllEpisodes(initialEpisodes);
 
             // Mark initial seasons as fetched
             const initialSeasons = new Set<string>();
-            validEpisodes.forEach(ep => {
+            initialEpisodes.forEach(ep => {
                 if (ep && ep.s) initialSeasons.add(String(ep.s));
             });
             setFetchedSeasons(initialSeasons);
         }
 
         if (data?.season && data.season.length > 0) {
-            // Default to the first season in the list, or the first one we have episodes for
+            // Default to the first season in the list
             const firstSeason = String(data.season[0].s);
             setSelectedSeason(firstSeason);
+
+            // Check if we have episodes for this season
+            const hasEpisodes = initialEpisodes.some(ep => ep && String(ep.s) === String(firstSeason));
+            if (!hasEpisodes) {
+                console.log(`loadDetails: Auto-fetching episodes for default Season ${firstSeason}`);
+                await fetchSeasonEpisodes(firstSeason, data);
+            }
         }
         setLoading(false);
     };
 
+    const fetchSeasonEpisodes = async (seasonStr: string, currentDetails: MovieDetails | null) => {
+        if (!currentDetails || !currentDetails.season) return;
+
+        const seasonObj = currentDetails.season.find(s => String(s.s) === String(seasonStr));
+        if (seasonObj) {
+            setSeasonLoading(true);
+            try {
+                console.log(`fetchSeasonEpisodes: Fetching details for Season ${seasonStr}`);
+                const seasonData = await fetchMovieDetails(movieId, providerId, seasonStr);
+
+                if (seasonData && seasonData.episodes) {
+                    console.log(`fetchSeasonEpisodes: Got ${seasonData.episodes.length} episodes`);
+
+                    const fixedEpisodes = seasonData.episodes.map(ep => ({
+                        ...ep,
+                        s: seasonStr,
+                        // Do NOT modify ID to ensure playback works
+                        id: ep.id
+                    }));
+
+                    setAllEpisodes(prev => {
+                        const validNewEpisodes = fixedEpisodes.filter(ep => ep !== null);
+                        // Merge new episodes, avoiding duplicates by ID
+                        const newEpisodes = validNewEpisodes.filter(newEp =>
+                            !prev.some(existingEp => existingEp && existingEp.id === newEp.id)
+                        );
+                        return [...prev, ...newEpisodes];
+                    });
+
+                    setFetchedSeasons(prev => new Set(prev).add(seasonStr));
+                }
+            } catch (error) {
+                console.error("Failed to fetch season episodes", error);
+            } finally {
+                setSeasonLoading(false);
+            }
+        }
+    };
+
     const handleSeasonPress = async (seasonStr: string) => {
+        console.log(`handleSeasonPress: Clicked Season ${seasonStr}`);
         setSelectedSeason(seasonStr);
 
         // Check if we already have episodes for this season
         const hasEpisodes = allEpisodes.some(ep => ep && String(ep.s) === String(seasonStr));
 
-        if (!hasEpisodes && details?.season) {
-            // Find the season object to get its ID
-            const seasonObj = details.season.find(s => String(s.s) === String(seasonStr));
-
-            if (seasonObj && seasonObj.id) {
-                setSeasonLoading(true);
-                try {
-                    // Fetch details for this specific season using the season ID
-                    const seasonData = await fetchMovieDetails(seasonObj.id, providerId);
-
-                    if (seasonData && seasonData.episodes) {
-                        setAllEpisodes(prev => {
-                            // Filter out nulls from new episodes
-                            const validNewEpisodes = seasonData.episodes!.filter(ep => ep !== null);
-
-                            // Merge new episodes, avoiding duplicates
-                            const newEpisodes = validNewEpisodes.filter(newEp =>
-                                !prev.some(existingEp => existingEp && existingEp.id === newEp.id)
-                            );
-                            return [...prev, ...newEpisodes];
-                        });
-
-                        setFetchedSeasons(prev => new Set(prev).add(seasonStr));
-                    }
-                } catch (error) {
-                    console.error("Failed to fetch season episodes", error);
-                    Alert.alert("Error", "Failed to load episodes for this season.");
-                } finally {
-                    setSeasonLoading(false);
-                }
-            }
+        if (!hasEpisodes) {
+            await fetchSeasonEpisodes(seasonStr, details);
         }
     };
 
@@ -156,7 +217,11 @@ const DetailsPage: React.FC<DetailsPageProps> = ({ movieId, onClose, onMoviePres
                     url: streamResult.url,
                     cookies: streamResult.cookies,
                     title: details.title,
+                    referer: streamResult.referer,
+                    sources: streamResult.sources,
+                    tracks: streamResult.tracks,
                 });
+                setCurrentEpisode(null); // Movie has no episode
             } else {
                 Alert.alert('Error', 'Failed to get stream URL');
             }
@@ -185,7 +250,11 @@ const DetailsPage: React.FC<DetailsPageProps> = ({ movieId, onClose, onMoviePres
                     url: streamResult.url,
                     cookies: streamResult.cookies,
                     title: `${episode.s}:E${episode.ep} - ${episode.t}`,
+                    referer: streamResult.referer,
+                    sources: streamResult.sources,
+                    tracks: streamResult.tracks,
                 });
+                setCurrentEpisode(episode);
             } else {
                 Alert.alert('Error', 'Failed to get stream URL');
             }
@@ -197,16 +266,48 @@ const DetailsPage: React.FC<DetailsPageProps> = ({ movieId, onClose, onMoviePres
 
     const handleCloseVideo = () => {
         setVideoStream(null);
+        setCurrentEpisode(null);
+    };
+
+    const getNextEpisode = () => {
+        if (!currentEpisode || allEpisodes.length === 0) return null;
+
+        // Try to find next episode in same season
+        const nextEpInSeason = allEpisodes.find(ep =>
+            String(ep.s) === String(currentEpisode.s) &&
+            parseInt(ep.ep) === parseInt(currentEpisode.ep) + 1
+        );
+        if (nextEpInSeason) return nextEpInSeason;
+
+        // Try to find first episode of next season
+        const nextSeason = parseInt(currentEpisode.s) + 1;
+        const firstEpNextSeason = allEpisodes.find(ep =>
+            parseInt(ep.s) === nextSeason &&
+            parseInt(ep.ep) === 1
+        );
+        return firstEpNextSeason || null;
+    };
+
+    const handleNextEpisode = () => {
+        const nextEp = getNextEpisode();
+        if (nextEp) {
+            handleEpisodePress(nextEp);
+        }
     };
 
     // Show video player if video stream is available
     if (videoStream) {
+        const nextEp = getNextEpisode();
         return (
             <VideoPlayer
                 videoUrl={videoStream.url}
                 title={videoStream.title}
                 cookies={videoStream.cookies}
+                referer={videoStream.referer}
+                sources={videoStream.sources}
+                tracks={videoStream.tracks}
                 onClose={handleCloseVideo}
+                onNextEpisode={nextEp ? handleNextEpisode : undefined}
             />
         );
     }
@@ -229,46 +330,6 @@ const DetailsPage: React.FC<DetailsPageProps> = ({ movieId, onClose, onMoviePres
             </View>
         );
     }
-
-    const renderEpisode = (episode: Episode, index: number) => (
-        <TouchableOpacity key={episode.id} style={styles.episodeCard} onPress={() => handleEpisodePress(episode)}>
-            <View style={styles.episodeNumber}>
-                <Text style={styles.episodeNumberText}>{episode.ep}</Text>
-            </View>
-            <View style={styles.episodeInfo}>
-                <View style={styles.episodeHeader}>
-                    <Text style={styles.episodeTitle}>{episode.t}</Text>
-                    <Text style={styles.episodeTime}>{episode.time}</Text>
-                </View>
-                <Text style={styles.episodeDesc} numberOfLines={3}>
-                    {episode.ep_desc}
-                </Text>
-            </View>
-        </TouchableOpacity>
-    );
-
-    const renderSuggestion = (movie: SuggestedMovie) => (
-        <TouchableOpacity
-            key={movie.id}
-            style={styles.suggestionCard}
-            onPress={() => onMoviePress({ id: movie.id, title: movie.t, imageUrl: `https://imgcdn.kim/poster/341/${movie.id}.jpg` })}
-        >
-            <Image
-                source={{ uri: `https://imgcdn.kim/poster/341/${movie.id}.jpg` }}
-                style={styles.suggestionImage}
-            />
-            <View style={styles.suggestionInfo}>
-                <View style={styles.suggestionHeader}>
-                    <Text style={styles.suggestionMatch}>{movie.m}</Text>
-                    <Text style={styles.suggestionYear}>{movie.y}</Text>
-                </View>
-                <Text style={styles.suggestionRuntime}>{movie.t}</Text>
-                <Text style={styles.suggestionDesc} numberOfLines={3}>
-                    {movie.d}
-                </Text>
-            </View>
-        </TouchableOpacity>
-    );
 
     return (
         <View style={styles.container}>

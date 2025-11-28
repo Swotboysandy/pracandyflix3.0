@@ -1,244 +1,253 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
-import Animated, { SlideInDown, SlideOutDown, FadeIn, FadeOut } from 'react-native-reanimated';
-import { X, Check, Globe, Type, Zap, Monitor } from 'lucide-react-native';
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, TouchableWithoutFeedback, Dimensions } from 'react-native';
+import { X, Check, Settings as SettingsIcon, Type, Gauge, Layers, Music } from 'lucide-react-native';
+import { StreamSource, StreamTrack } from '../../services/api';
 
 interface SettingsModalProps {
     visible: boolean;
     onClose: () => void;
-    audioTracks: any[];
-    textTracks: any[];
-    videoTracks: any[];
-    selectedAudioTrack: number;
-    selectedTextTrack: number;
-    selectedVideoTrack: any;
-    playbackRate: number;
-    onSelectAudioTrack: (index: number) => void;
-    onSelectTextTrack: (index: number) => void;
-    onSelectVideoTrack: (track: any) => void;
-    onSelectPlaybackRate: (rate: number) => void;
+    sources?: StreamSource[];
+    tracks?: StreamTrack[]; // All tracks
+    selectedSource?: StreamSource;
+    selectedTextTrack?: StreamTrack | null;
+    selectedAudioTrack?: StreamTrack | null;
+    playbackSpeed: number;
+    onSelectSource: (source: StreamSource) => void;
+    onSelectTextTrack: (track: StreamTrack | null) => void;
+    onSelectAudioTrack: (track: StreamTrack | null) => void;
+    onSelectSpeed: (speed: number) => void;
 }
 
-type Tab = 'audio' | 'subtitle' | 'speed' | 'quality';
+type Tab = 'quality' | 'audio' | 'subtitles' | 'speed';
 
 const SettingsModal: React.FC<SettingsModalProps> = ({
     visible,
     onClose,
-    audioTracks,
-    textTracks,
-    videoTracks,
-    selectedAudioTrack,
+    sources = [],
+    tracks = [],
+    selectedSource,
     selectedTextTrack,
-    selectedVideoTrack,
-    playbackRate,
-    onSelectAudioTrack,
+    selectedAudioTrack,
+    playbackSpeed,
+    onSelectSource,
     onSelectTextTrack,
-    onSelectVideoTrack,
-    onSelectPlaybackRate,
+    onSelectAudioTrack,
+    onSelectSpeed,
 }) => {
-    const [activeTab, setActiveTab] = useState<Tab>('audio');
+    const [activeTab, setActiveTab] = useState<Tab>('quality');
+
+    const speeds = [0.5, 0.75, 1.0, 1.25, 1.5, 2.0];
+
+    // Filter tracks
+    const subtitleTracks = tracks.filter(t => t.kind !== 'audio'); // Assuming non-audio are subs/captions
+    const audioTracks = tracks.filter(t => t.kind === 'audio');
+
+    const renderTabButton = (id: Tab, icon: React.ReactNode, label: string) => (
+        <TouchableOpacity
+            style={[styles.tabButton, activeTab === id && styles.activeTabButton]}
+            onPress={() => setActiveTab(id)}
+        >
+            {icon}
+            <Text style={[styles.tabLabel, activeTab === id && styles.activeTabLabel]}>{label}</Text>
+        </TouchableOpacity>
+    );
+
+    const renderQualityOptions = () => (
+        <ScrollView style={styles.optionsList}>
+            {sources.map((source, index) => (
+                <TouchableOpacity
+                    key={index}
+                    style={styles.optionItem}
+                    onPress={() => onSelectSource(source)}
+                >
+                    <Text style={[styles.optionText, selectedSource?.file === source.file && styles.selectedOptionText]}>
+                        {source.label || 'Auto'}
+                    </Text>
+                    {selectedSource?.file === source.file && <Check color="#E50914" size={20} />}
+                </TouchableOpacity>
+            ))}
+        </ScrollView>
+    );
+
+    const renderSubtitleOptions = () => (
+        <ScrollView style={styles.optionsList}>
+            <TouchableOpacity
+                style={styles.optionItem}
+                onPress={() => onSelectTextTrack(null)}
+            >
+                <Text style={[styles.optionText, selectedTextTrack === null && styles.selectedOptionText]}>Off</Text>
+                {selectedTextTrack === null && <Check color="#E50914" size={20} />}
+            </TouchableOpacity>
+            {subtitleTracks.map((track, index) => (
+                <TouchableOpacity
+                    key={index}
+                    style={styles.optionItem}
+                    onPress={() => onSelectTextTrack(track)}
+                >
+                    <Text style={[styles.optionText, selectedTextTrack?.file === track.file && styles.selectedOptionText]}>
+                        {track.label || 'Unknown'}
+                    </Text>
+                    {selectedTextTrack?.file === track.file && <Check color="#E50914" size={20} />}
+                </TouchableOpacity>
+            ))}
+        </ScrollView>
+    );
+
+    const renderAudioOptions = () => (
+        <ScrollView style={styles.optionsList}>
+            {/* If no explicit audio tracks, maybe show 'Default' or similar? 
+                 Usually video has at least one audio track. 
+                 If tracks array is empty, we might not show this tab or show 'Default'.
+             */}
+            {audioTracks.length === 0 && (
+                <View style={styles.optionItem}>
+                    <Text style={styles.optionText}>Default Audio</Text>
+                    <Check color="#E50914" size={20} />
+                </View>
+            )}
+            {audioTracks.map((track, index) => (
+                <TouchableOpacity
+                    key={index}
+                    style={styles.optionItem}
+                    onPress={() => onSelectAudioTrack(track)}
+                >
+                    <Text style={[styles.optionText, selectedAudioTrack?.file === track.file && styles.selectedOptionText]}>
+                        {track.label || 'Unknown'}
+                    </Text>
+                    {selectedAudioTrack?.file === track.file && <Check color="#E50914" size={20} />}
+                </TouchableOpacity>
+            ))}
+        </ScrollView>
+    );
+
+    const renderSpeedOptions = () => (
+        <ScrollView style={styles.optionsList}>
+            {speeds.map((speed) => (
+                <TouchableOpacity
+                    key={speed}
+                    style={styles.optionItem}
+                    onPress={() => onSelectSpeed(speed)}
+                >
+                    <Text style={[styles.optionText, playbackSpeed === speed && styles.selectedOptionText]}>
+                        {speed}x
+                    </Text>
+                    {playbackSpeed === speed && <Check color="#E50914" size={20} />}
+                </TouchableOpacity>
+            ))}
+        </ScrollView>
+    );
 
     if (!visible) return null;
 
-    const renderContent = () => {
-        switch (activeTab) {
-            case 'audio':
-                return (
-                    <ScrollView style={styles.contentScroll}>
-                        {audioTracks.map((track, i) => (
-                            <TouchableOpacity
-                                key={i}
-                                style={styles.optionItem}
-                                onPress={() => onSelectAudioTrack(i)}
-                            >
-                                <Text style={[styles.optionText, selectedAudioTrack === i && styles.selectedText]}>
-                                    {track.language || `Track ${i + 1}`}
-                                </Text>
-                                {selectedAudioTrack === i && <Check color="#E50914" size={20} />}
-                            </TouchableOpacity>
-                        ))}
-                    </ScrollView>
-                );
-            case 'subtitle':
-                return (
-                    <ScrollView style={styles.contentScroll}>
-                        <TouchableOpacity
-                            style={styles.optionItem}
-                            onPress={() => onSelectTextTrack(1000)} // 1000 for disabled
-                        >
-                            <Text style={[styles.optionText, selectedTextTrack === 1000 && styles.selectedText]}>
-                                None
-                            </Text>
-                            {selectedTextTrack === 1000 && <Check color="#E50914" size={20} />}
-                        </TouchableOpacity>
-                        {textTracks.map((track, i) => (
-                            <TouchableOpacity
-                                key={i}
-                                style={styles.optionItem}
-                                onPress={() => onSelectTextTrack(i)}
-                            >
-                                <Text style={[styles.optionText, selectedTextTrack === i && styles.selectedText]}>
-                                    {track.language || `Subtitle ${i + 1}`}
-                                </Text>
-                                {selectedTextTrack === i && <Check color="#E50914" size={20} />}
-                            </TouchableOpacity>
-                        ))}
-                    </ScrollView>
-                );
-            case 'speed':
-                return (
-                    <ScrollView style={styles.contentScroll}>
-                        {[0.5, 1.0, 1.25, 1.5, 2.0].map((rate) => (
-                            <TouchableOpacity
-                                key={rate}
-                                style={styles.optionItem}
-                                onPress={() => onSelectPlaybackRate(rate)}
-                            >
-                                <Text style={[styles.optionText, playbackRate === rate && styles.selectedText]}>
-                                    {rate}x
-                                </Text>
-                                {playbackRate === rate && <Check color="#E50914" size={20} />}
-                            </TouchableOpacity>
-                        ))}
-                    </ScrollView>
-                );
-            case 'quality':
-                return (
-                    <ScrollView style={styles.contentScroll}>
-                        <TouchableOpacity
-                            style={styles.optionItem}
-                            onPress={() => onSelectVideoTrack({ type: 'auto' })}
-                        >
-                            <Text style={[styles.optionText, selectedVideoTrack.type === 'auto' && styles.selectedText]}>
-                                Auto
-                            </Text>
-                            {selectedVideoTrack.type === 'auto' && <Check color="#E50914" size={20} />}
-                        </TouchableOpacity>
-                        {videoTracks.map((track, i) => (
-                            <TouchableOpacity
-                                key={i}
-                                style={styles.optionItem}
-                                onPress={() => onSelectVideoTrack({ type: 'index', value: i })}
-                            >
-                                <Text style={[styles.optionText, selectedVideoTrack.value === i && styles.selectedText]}>
-                                    {track.height ? `${track.height}p` : `Quality ${i + 1}`}
-                                </Text>
-                                {selectedVideoTrack.value === i && <Check color="#E50914" size={20} />}
-                            </TouchableOpacity>
-                        ))}
-                    </ScrollView>
-                );
-        }
-    };
-
     return (
-        <Animated.View entering={FadeIn} exiting={FadeOut} style={styles.overlay}>
-            <TouchableOpacity style={styles.backdrop} onPress={onClose} activeOpacity={1} />
-            <Animated.View entering={SlideInDown.springify().damping(20)} exiting={SlideOutDown} style={styles.modal}>
-                <View style={styles.header}>
-                    <Text style={styles.title}>Settings</Text>
-                    <TouchableOpacity onPress={onClose}>
-                        <X color="#fff" size={24} />
-                    </TouchableOpacity>
-                </View>
+        <View style={styles.modalContainer} onTouchEnd={(e) => e.stopPropagation()}>
+            <TouchableWithoutFeedback onPress={onClose}>
+                <View style={styles.overlay}>
+                    <TouchableWithoutFeedback>
+                        <View style={styles.sidePanel}>
+                            <View style={styles.header}>
+                                <Text style={styles.title}>Settings</Text>
+                                <TouchableOpacity onPress={onClose}>
+                                    <X color="#fff" size={24} />
+                                </TouchableOpacity>
+                            </View>
 
-                <View style={styles.tabs}>
-                    <TouchableOpacity
-                        style={[styles.tab, activeTab === 'audio' && styles.activeTab]}
-                        onPress={() => setActiveTab('audio')}
-                    >
-                        <Globe color={activeTab === 'audio' ? '#fff' : '#aaa'} size={20} />
-                        <Text style={[styles.tabText, activeTab === 'audio' && styles.activeTabText]}>Audio</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                        style={[styles.tab, activeTab === 'subtitle' && styles.activeTab]}
-                        onPress={() => setActiveTab('subtitle')}
-                    >
-                        <Type color={activeTab === 'subtitle' ? '#fff' : '#aaa'} size={20} />
-                        <Text style={[styles.tabText, activeTab === 'subtitle' && styles.activeTabText]}>Subtitle</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                        style={[styles.tab, activeTab === 'speed' && styles.activeTab]}
-                        onPress={() => setActiveTab('speed')}
-                    >
-                        <Zap color={activeTab === 'speed' ? '#fff' : '#aaa'} size={20} />
-                        <Text style={[styles.tabText, activeTab === 'speed' && styles.activeTabText]}>Speed</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                        style={[styles.tab, activeTab === 'quality' && styles.activeTab]}
-                        onPress={() => setActiveTab('quality')}
-                    >
-                        <Monitor color={activeTab === 'quality' ? '#fff' : '#aaa'} size={20} />
-                        <Text style={[styles.tabText, activeTab === 'quality' && styles.activeTabText]}>Quality</Text>
-                    </TouchableOpacity>
-                </View>
+                            <View style={styles.tabsContainer}>
+                                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabsContent}>
+                                    {renderTabButton('quality', <Layers color={activeTab === 'quality' ? '#000' : '#fff'} size={18} />, 'Quality')}
+                                    {renderTabButton('audio', <Music color={activeTab === 'audio' ? '#000' : '#fff'} size={18} />, 'Audio')}
+                                    {renderTabButton('subtitles', <Type color={activeTab === 'subtitles' ? '#000' : '#fff'} size={18} />, 'Subtitles')}
+                                    {renderTabButton('speed', <Gauge color={activeTab === 'speed' ? '#000' : '#fff'} size={18} />, 'Speed')}
+                                </ScrollView>
+                            </View>
 
-                <View style={styles.content}>
-                    {renderContent()}
+                            <View style={styles.content}>
+                                {activeTab === 'quality' && renderQualityOptions()}
+                                {activeTab === 'audio' && renderAudioOptions()}
+                                {activeTab === 'subtitles' && renderSubtitleOptions()}
+                                {activeTab === 'speed' && renderSpeedOptions()}
+                            </View>
+                        </View>
+                    </TouchableWithoutFeedback>
                 </View>
-            </Animated.View>
-        </Animated.View>
+            </TouchableWithoutFeedback>
+        </View>
     );
 };
 
 const styles = StyleSheet.create({
+    modalContainer: {
+        ...StyleSheet.absoluteFillObject,
+        zIndex: 100,
+        elevation: 100,
+    },
     overlay: {
-        ...StyleSheet.absoluteFillObject,
-        zIndex: 1000,
-        justifyContent: 'flex-end',
-    },
-    backdrop: {
-        ...StyleSheet.absoluteFillObject,
+        flex: 1,
         backgroundColor: 'rgba(0,0,0,0.5)',
+        flexDirection: 'row',
+        justifyContent: 'flex-end', // Align to right
     },
-    modal: {
+    sidePanel: {
+        width: 350, // Increased width
+        height: '100%',
         backgroundColor: '#1a1a1a',
-        borderTopLeftRadius: 16,
-        borderTopRightRadius: 16,
-        paddingBottom: 20,
-        maxHeight: '60%',
+        padding: 20,
+        paddingTop: 40, // Add top padding for status bar
+        shadowColor: "#000",
+        shadowOffset: {
+            width: -2,
+            height: 0,
+        },
+        shadowOpacity: 0.25,
+        shadowRadius: 3.84,
+        elevation: 5,
     },
     header: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        padding: 16,
-        borderBottomWidth: 1,
-        borderBottomColor: 'rgba(255,255,255,0.1)',
+        marginBottom: 20,
     },
     title: {
         color: '#fff',
         fontSize: 18,
         fontWeight: 'bold',
     },
-    tabs: {
-        flexDirection: 'row',
+    tabsContainer: {
+        marginBottom: 15,
         borderBottomWidth: 1,
-        borderBottomColor: 'rgba(255,255,255,0.1)',
+        borderBottomColor: '#333',
     },
-    tab: {
-        flex: 1,
+    tabsContent: {
+        flexDirection: 'row',
+        gap: 10,
+        paddingBottom: 10,
+    },
+    tabButton: {
+        flexDirection: 'row',
         alignItems: 'center',
-        paddingVertical: 12,
-        gap: 4,
+        paddingVertical: 8,
+        paddingHorizontal: 12,
+        borderRadius: 20,
+        backgroundColor: '#333',
+        gap: 6,
     },
-    activeTab: {
-        borderBottomWidth: 2,
-        borderBottomColor: '#E50914',
+    activeTabButton: {
+        backgroundColor: '#fff',
     },
-    tabText: {
-        color: '#aaa',
-        fontSize: 12,
-    },
-    activeTabText: {
+    tabLabel: {
         color: '#fff',
-        fontWeight: 'bold',
+        fontSize: 12,
+        fontWeight: '600',
+    },
+    activeTabLabel: {
+        color: '#000',
     },
     content: {
-        height: 250,
+        flex: 1,
     },
-    contentScroll: {
-        padding: 16,
+    optionsList: {
+        flex: 1,
     },
     optionItem: {
         flexDirection: 'row',
@@ -246,15 +255,15 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         paddingVertical: 12,
         borderBottomWidth: 1,
-        borderBottomColor: 'rgba(255,255,255,0.05)',
+        borderBottomColor: '#2a2a2a',
     },
     optionText: {
-        color: '#fff',
-        fontSize: 16,
+        color: '#ccc',
+        fontSize: 14,
     },
-    selectedText: {
-        color: '#E50914',
+    selectedOptionText: {
         fontWeight: 'bold',
+        color: '#fff',
     },
 });
 

@@ -9,8 +9,12 @@ import {
     ActivityIndicator,
     Image,
     Dimensions,
-    BackHandler
+    BackHandler,
+    Platform,
+    KeyboardAvoidingView,
+    Keyboard
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { searchMovies, Movie } from '../services/api';
 
 interface SearchProps {
@@ -83,80 +87,98 @@ const Search: React.FC<SearchProps> = ({ onClose, onMoviePress }) => {
     );
 
     return (
-        <View style={styles.container}>
-            <View style={styles.header}>
-                <View style={styles.searchBar}>
-                    <Image source={{ uri: 'https://img.icons8.com/ios-filled/50/999999/search--v1.png' }} style={styles.searchIcon} />
-                    <TextInput
-                        style={styles.input}
-                        placeholder="Search for a show, movie, genre, etc."
-                        placeholderTextColor="#999"
-                        value={query}
-                        onChangeText={setQuery}
-                        autoFocus
-                    />
-                    {query.length > 0 && (
-                        <TouchableOpacity onPress={() => setQuery('')}>
-                            <Image source={{ uri: 'https://img.icons8.com/ios-filled/50/999999/delete-sign.png' }} style={styles.clearIcon} />
-                        </TouchableOpacity>
-                    )}
+        <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
+            <KeyboardAvoidingView
+                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                style={styles.container}
+            >
+                <View style={styles.header}>
+                    <TouchableOpacity onPress={onClose} style={styles.backButton}>
+                        <Image source={{ uri: 'https://img.icons8.com/ios-filled/50/ffffff/left.png' }} style={styles.icon} />
+                    </TouchableOpacity>
+                    <View style={styles.searchBar}>
+                        <Image source={{ uri: 'https://img.icons8.com/ios-filled/50/999999/search--v1.png' }} style={styles.searchIcon} />
+                        <TextInput
+                            style={styles.input}
+                            placeholder="Search for a show, movie, genre, etc."
+                            placeholderTextColor="#999"
+                            value={query}
+                            onChangeText={setQuery}
+                            autoFocus
+                            returnKeyType="search"
+                            onSubmitEditing={Keyboard.dismiss}
+                        />
+                        {query.length > 0 && (
+                            <TouchableOpacity onPress={() => setQuery('')}>
+                                <Image source={{ uri: 'https://img.icons8.com/ios-filled/50/999999/delete-sign.png' }} style={styles.clearIcon} />
+                            </TouchableOpacity>
+                        )}
+                    </View>
                 </View>
-            </View>
-            <View style={styles.toggleContainer}>
-                <TouchableOpacity
-                    style={[styles.toggleButton, selectedPlatform === 'netflix' && styles.toggleButtonActive]}
-                    onPress={() => setSelectedPlatform('netflix')}
-                >
-                    <Text style={[styles.toggleText, selectedPlatform === 'netflix' && styles.toggleTextActive]}>Netflix</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                    style={[styles.toggleButton, selectedPlatform === 'primevideo' && styles.toggleButtonActive]}
-                    onPress={() => setSelectedPlatform('primevideo')}
-                >
-                    <Text style={[styles.toggleText, selectedPlatform === 'primevideo' && styles.toggleTextActive]}>Prime</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                    style={[styles.toggleButton, selectedPlatform === 'hotstar' && styles.toggleButtonActive]}
-                    onPress={() => setSelectedPlatform('hotstar')}
-                >
-                    <Text style={[styles.toggleText, selectedPlatform === 'hotstar' && styles.toggleTextActive]}>Hotstar</Text>
-                </TouchableOpacity>
-            </View>
+                <View style={styles.toggleContainer}>
+                    <TouchableOpacity
+                        style={[styles.toggleButton, selectedPlatform === 'netflix' && styles.toggleButtonActive]}
+                        onPress={() => setSelectedPlatform('netflix')}
+                    >
+                        <Text style={[styles.toggleText, selectedPlatform === 'netflix' && styles.toggleTextActive]}>Netflix</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        style={[styles.toggleButton, selectedPlatform === 'primevideo' && styles.toggleButtonActive]}
+                        onPress={() => setSelectedPlatform('primevideo')}
+                    >
+                        <Text style={[styles.toggleText, selectedPlatform === 'primevideo' && styles.toggleTextActive]}>Prime</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        style={[styles.toggleButton, selectedPlatform === 'hotstar' && styles.toggleButtonActive]}
+                        onPress={() => setSelectedPlatform('hotstar')}
+                    >
+                        <Text style={[styles.toggleText, selectedPlatform === 'hotstar' && styles.toggleTextActive]}>Hotstar</Text>
+                    </TouchableOpacity>
+                </View>
 
-            {loading ? (
-                <ActivityIndicator size="large" color="#E50914" style={styles.loader} />
-            ) : (
-                <FlatList
-                    data={results}
-                    renderItem={renderItem}
-                    keyExtractor={(item) => item.id}
-                    numColumns={numColumns}
-                    contentContainerStyle={styles.listContent}
-                    ListEmptyComponent={
-                        query.length > 2 ? (
-                            <View style={styles.emptyContainer}>
-                                <Text style={styles.emptyText}>Oh darn. We don't have that.</Text>
-                                <Text style={styles.emptySubText}>Try searching for another movie, show, actor, or genre.</Text>
-                            </View>
-                        ) : null
-                    }
-                />
-            )}
-        </View>
+                {loading ? (
+                    <ActivityIndicator size="large" color="#E50914" style={styles.loader} />
+                ) : (
+                    <FlatList
+                        data={results}
+                        renderItem={renderItem}
+                        keyExtractor={(item) => item.id}
+                        numColumns={numColumns}
+                        contentContainerStyle={styles.listContent}
+                        keyboardShouldPersistTaps="handled"
+                        ListEmptyComponent={
+                            query.length > 2 ? (
+                                <View style={styles.emptyContainer}>
+                                    <Text style={styles.emptyText}>Oh darn. We don't have that.</Text>
+                                    <Text style={styles.emptySubText}>Try searching for another movie, show, actor, or genre.</Text>
+                                </View>
+                            ) : null
+                        }
+                    />
+                )}
+            </KeyboardAvoidingView>
+        </SafeAreaView>
     );
 };
 
 const styles = StyleSheet.create({
+    safeArea: {
+        flex: 1,
+        backgroundColor: '#000',
+    },
     container: {
         flex: 1,
         backgroundColor: '#000',
-        paddingTop: 10, // Safe area handled by parent or SafeAreaView
     },
     header: {
         flexDirection: 'row',
         alignItems: 'center',
         paddingHorizontal: 10,
-        marginBottom: 10,
+        paddingVertical: 10,
+        marginBottom: 5,
+    },
+    backButton: {
+        padding: 5,
     },
     icon: {
         width: 24,
@@ -195,6 +217,7 @@ const styles = StyleSheet.create({
     },
     listContent: {
         paddingHorizontal: 10,
+        paddingBottom: 20,
     },
     itemContainer: {
         width: itemWidth,
