@@ -51,7 +51,12 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ videoUrl, title, cookies, ref
             enterFullscreen();
             setIsFullscreen(true);
         }
+        return () => {
+            exitFullscreen();
+        };
+    }, [pipEnabled]);
 
+    useEffect(() => {
         const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
             if (settingsVisible) {
                 setSettingsVisible(false);
@@ -66,7 +71,6 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ videoUrl, title, cookies, ref
         });
 
         return () => {
-            exitFullscreen();
             backHandler.remove();
             if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
         };

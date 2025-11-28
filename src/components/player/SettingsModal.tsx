@@ -140,7 +140,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
     if (!visible) return null;
 
     return (
-        <View style={styles.modalContainer}>
+        <View style={styles.modalContainer} onTouchEnd={(e) => e.stopPropagation()}>
             <TouchableWithoutFeedback onPress={onClose}>
                 <View style={styles.overlay}>
                     <TouchableWithoutFeedback>
