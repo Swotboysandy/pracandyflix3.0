@@ -16,10 +16,11 @@ interface VideoCoreProps {
     selectedAudioTrack?: any;
     selectedTextTrack?: any;
     selectedVideoTrack?: any;
+    referer?: string;
     [key: string]: any;
 }
 
-const VideoCore = forwardRef<VideoRef, VideoCoreProps>(({ videoUrl, cookies, style, ...props }, ref) => {
+const VideoCore = forwardRef<VideoRef, VideoCoreProps>(({ videoUrl, cookies, referer, style, ...props }, ref) => {
     return (
         <Video
             ref={ref}
@@ -28,7 +29,7 @@ const VideoCore = forwardRef<VideoRef, VideoCoreProps>(({ videoUrl, cookies, sty
                 type: 'm3u8',
                 headers: {
                     'Cookie': cookies,
-                    'Referer': 'https://net51.cc/',
+                    'Referer': referer || 'https://net51.cc/',
                     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
                 },
             }}

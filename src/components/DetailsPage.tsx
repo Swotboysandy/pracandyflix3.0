@@ -29,10 +29,12 @@ const DetailsPage: React.FC<DetailsPageProps> = ({ movieId, onClose, onMoviePres
     const [loading, setLoading] = useState(true);
     const [selectedSeason, setSelectedSeason] = useState<string>('1');
     const [loadingStream, setLoadingStream] = useState(false);
-    const [videoStream, setVideoStream] = useState<{ url: string; cookies: string; title: string; referer?: string } | null>(null);
+    const [videoStream, setVideoStream] = useState<{ url: string; cookies: string; title: string; referer?: string; sources?: any[]; tracks?: any[] } | null>(null);
     const [allEpisodes, setAllEpisodes] = useState<Episode[]>([]);
     const [fetchedSeasons, setFetchedSeasons] = useState<Set<string>>(new Set());
     const [seasonLoading, setSeasonLoading] = useState(false);
+
+    const [currentEpisode, setCurrentEpisode] = useState<Episode | null>(null);
 
     useEffect(() => {
         loadDetails();
@@ -216,7 +218,10 @@ const DetailsPage: React.FC<DetailsPageProps> = ({ movieId, onClose, onMoviePres
                     cookies: streamResult.cookies,
                     title: details.title,
                     referer: streamResult.referer,
+                    sources: streamResult.sources,
+                    tracks: streamResult.tracks,
                 });
+                setCurrentEpisode(null); // Movie has no episode
             } else {
                 Alert.alert('Error', 'Failed to get stream URL');
             }
@@ -246,7 +251,10 @@ const DetailsPage: React.FC<DetailsPageProps> = ({ movieId, onClose, onMoviePres
                     cookies: streamResult.cookies,
                     title: `${episode.s}:E${episode.ep} - ${episode.t}`,
                     referer: streamResult.referer,
+                    sources: streamResult.sources,
+                    tracks: streamResult.tracks,
                 });
+                setCurrentEpisode(episode);
             } else {
                 Alert.alert('Error', 'Failed to get stream URL');
             }
@@ -258,17 +266,48 @@ const DetailsPage: React.FC<DetailsPageProps> = ({ movieId, onClose, onMoviePres
 
     const handleCloseVideo = () => {
         setVideoStream(null);
+        setCurrentEpisode(null);
+    };
+
+    const getNextEpisode = () => {
+        if (!currentEpisode || allEpisodes.length === 0) return null;
+
+        // Try to find next episode in same season
+        const nextEpInSeason = allEpisodes.find(ep =>
+            String(ep.s) === String(currentEpisode.s) &&
+            parseInt(ep.ep) === parseInt(currentEpisode.ep) + 1
+        );
+        if (nextEpInSeason) return nextEpInSeason;
+
+        // Try to find first episode of next season
+        const nextSeason = parseInt(currentEpisode.s) + 1;
+        const firstEpNextSeason = allEpisodes.find(ep =>
+            parseInt(ep.s) === nextSeason &&
+            parseInt(ep.ep) === 1
+        );
+        return firstEpNextSeason || null;
+    };
+
+    const handleNextEpisode = () => {
+        const nextEp = getNextEpisode();
+        if (nextEp) {
+            handleEpisodePress(nextEp);
+        }
     };
 
     // Show video player if video stream is available
     if (videoStream) {
+        const nextEp = getNextEpisode();
         return (
             <VideoPlayer
                 videoUrl={videoStream.url}
                 title={videoStream.title}
                 cookies={videoStream.cookies}
                 referer={videoStream.referer}
+                sources={videoStream.sources}
+                tracks={videoStream.tracks}
                 onClose={handleCloseVideo}
+                onNextEpisode={nextEp ? handleNextEpisode : undefined}
             />
         );
     }

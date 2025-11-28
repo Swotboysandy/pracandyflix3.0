@@ -1,8 +1,8 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Dimensions, PanResponder } from 'react-native';
 import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 import Slider from '@react-native-community/slider';
-import { Play, Pause, SkipBack, SkipForward, Settings, Maximize, Minimize, ChevronLeft, Monitor, Sun, Volume2 } from 'lucide-react-native';
+import { Play, Pause, SkipBack, SkipForward, Settings, Maximize, Minimize, ChevronLeft, Monitor, Sun, Volume2, Lock, Unlock, StepForward, PictureInPicture } from 'lucide-react-native';
 
 interface ControlsOverlayProps {
     visible: boolean;
@@ -21,6 +21,8 @@ interface ControlsOverlayProps {
     isFullscreen: boolean;
     onToggleResizeMode: () => void;
     resizeMode: 'contain' | 'cover' | 'stretch';
+    onNextEpisode?: () => void;
+    onPiP?: () => void;
 }
 
 const { width, height } = Dimensions.get('window');
@@ -42,22 +44,32 @@ const ControlsOverlay: React.FC<ControlsOverlayProps> = ({
     isFullscreen,
     onToggleResizeMode,
     resizeMode,
+    onNextEpisode,
+    onPiP,
 }) => {
     const [volume, setVolume] = useState(0.5); // Mock volume state
     const [brightness, setBrightness] = useState(0.5); // Mock brightness state
     const [gestureType, setGestureType] = useState<'volume' | 'brightness' | 'seek' | null>(null);
     const [gestureValue, setGestureValue] = useState(0);
+    const [locked, setLocked] = useState(false);
+    const [showUnlock, setShowUnlock] = useState(false);
+
+    const lastTapRef = useRef<number>(0);
+    const lastTapPosRef = useRef<{ x: number, y: number } | null>(null);
+    const doubleTapDelay = 300;
 
     const panResponder = useRef(
         PanResponder.create({
             onStartShouldSetPanResponder: () => true,
             onMoveShouldSetPanResponder: (_, gestureState) => {
+                if (locked) return false;
                 return Math.abs(gestureState.dx) > 10 || Math.abs(gestureState.dy) > 10;
             },
             onPanResponderGrant: () => {
                 setGestureType(null);
             },
             onPanResponderMove: (_, gestureState) => {
+                if (locked) return;
                 const { dx, dy, moveX, moveY } = gestureState;
                 const absDx = Math.abs(dx);
                 const absDy = Math.abs(dy);
@@ -88,8 +100,32 @@ const ControlsOverlay: React.FC<ControlsOverlayProps> = ({
                 }
             },
             onPanResponderRelease: (_, gestureState) => {
+                if (locked) {
+                    // Handle tap when locked to show unlock button
+                    if (Math.abs(gestureState.dx) < 10 && Math.abs(gestureState.dy) < 10) {
+                        setShowUnlock(true);
+                        setTimeout(() => setShowUnlock(false), 3000);
+                    }
+                    return;
+                }
+
                 if (gestureType === 'seek') {
                     onSeek(currentTime + (gestureState.dx / width) * 90);
+                } else if (!gestureType) {
+                    // Handle Taps
+                    const now = Date.now();
+                    if (now - lastTapRef.current < doubleTapDelay) {
+                        // Double Tap
+                        const isLeft = gestureState.moveX < width / 2;
+                        if (isLeft) {
+                            onSkipBackward();
+                        } else {
+                            onSkipForward();
+                        }
+                        lastTapRef.current = 0; // Reset
+                    } else {
+                        lastTapRef.current = now;
+                    }
                 }
                 setGestureType(null);
             },
@@ -111,6 +147,19 @@ const ControlsOverlay: React.FC<ControlsOverlayProps> = ({
             <View style={styles.loadingContainer}>
                 <ActivityIndicator size="large" color="#E50914" />
                 <Text style={styles.loadingText}>Loading...</Text>
+            </View>
+        );
+    }
+
+    if (locked) {
+        return (
+            <View style={StyleSheet.absoluteFill} {...panResponder.panHandlers}>
+                {showUnlock && (
+                    <TouchableOpacity style={styles.unlockButton} onPress={() => setLocked(false)}>
+                        <Unlock color="#000" size={24} />
+                        <Text style={styles.unlockText}>Unlock</Text>
+                    </TouchableOpacity>
+                )}
             </View>
         );
     }
@@ -150,6 +199,16 @@ const ControlsOverlay: React.FC<ControlsOverlayProps> = ({
                             <ChevronLeft color="#fff" size={28} />
                         </TouchableOpacity>
                         <Text style={styles.title} numberOfLines={1}>{title}</Text>
+                        <View style={{ flexDirection: 'row' }}>
+                            {onPiP && (
+                                <TouchableOpacity onPress={onPiP} style={styles.iconButton}>
+                                    <PictureInPicture color="#fff" size={24} />
+                                </TouchableOpacity>
+                            )}
+                            <TouchableOpacity onPress={() => setLocked(true)} style={styles.iconButton}>
+                                <Lock color="#fff" size={24} />
+                            </TouchableOpacity>
+                        </View>
                     </View>
 
                     {/* Center Controls */}
@@ -191,21 +250,31 @@ const ControlsOverlay: React.FC<ControlsOverlayProps> = ({
                         </View>
 
                         <View style={styles.bottomControls}>
-                            <TouchableOpacity onPress={onToggleResizeMode} style={styles.iconButton}>
-                                <Monitor color={resizeMode === 'contain' ? '#fff' : '#E50914'} size={24} />
-                            </TouchableOpacity>
+                            <View style={styles.leftBottomControls}>
+                                <TouchableOpacity onPress={onToggleResizeMode} style={styles.iconButton}>
+                                    <Monitor color={resizeMode === 'contain' ? '#fff' : '#E50914'} size={24} />
+                                </TouchableOpacity>
+                            </View>
 
-                            <TouchableOpacity onPress={onSettings} style={styles.iconButton}>
-                                <Settings color="#fff" size={24} />
-                            </TouchableOpacity>
-
-                            <TouchableOpacity onPress={onToggleFullscreen} style={styles.iconButton}>
-                                {isFullscreen ? (
-                                    <Minimize color="#fff" size={24} />
-                                ) : (
-                                    <Maximize color="#fff" size={24} />
+                            <View style={styles.rightBottomControls}>
+                                {onNextEpisode && (
+                                    <TouchableOpacity onPress={onNextEpisode} style={[styles.iconButton, styles.nextEpButton]}>
+                                        <StepForward color="#fff" size={20} />
+                                        <Text style={styles.nextEpText}>Next Ep</Text>
+                                    </TouchableOpacity>
                                 )}
-                            </TouchableOpacity>
+                                <TouchableOpacity onPress={onSettings} style={styles.iconButton}>
+                                    <Settings color="#fff" size={24} />
+                                </TouchableOpacity>
+
+                                <TouchableOpacity onPress={onToggleFullscreen} style={styles.iconButton}>
+                                    {isFullscreen ? (
+                                        <Minimize color="#fff" size={24} />
+                                    ) : (
+                                        <Maximize color="#fff" size={24} />
+                                    )}
+                                </TouchableOpacity>
+                            </View>
                         </View>
                     </View>
                 </Animated.View>
@@ -253,6 +322,7 @@ const styles = StyleSheet.create({
     topBar: {
         flexDirection: 'row',
         alignItems: 'center',
+        justifyContent: 'space-between',
         padding: 16,
         paddingTop: 20,
         backgroundColor: 'rgba(0,0,0,0.5)',
@@ -310,11 +380,50 @@ const styles = StyleSheet.create({
     },
     bottomControls: {
         flexDirection: 'row',
-        justifyContent: 'flex-end',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+    },
+    leftBottomControls: {
+        flexDirection: 'row',
+        gap: 20,
+    },
+    rightBottomControls: {
+        flexDirection: 'row',
+        alignItems: 'center',
         gap: 20,
     },
     iconButton: {
         padding: 8,
+    },
+    nextEpButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: 'rgba(255,255,255,0.2)',
+        paddingVertical: 6,
+        paddingHorizontal: 12,
+        borderRadius: 20,
+        gap: 4,
+    },
+    nextEpText: {
+        color: '#fff',
+        fontSize: 12,
+        fontWeight: 'bold',
+    },
+    unlockButton: {
+        position: 'absolute',
+        bottom: 50,
+        alignSelf: 'center',
+        backgroundColor: '#fff',
+        paddingVertical: 10,
+        paddingHorizontal: 20,
+        borderRadius: 30,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+    },
+    unlockText: {
+        color: '#000',
+        fontWeight: 'bold',
     },
 });
 

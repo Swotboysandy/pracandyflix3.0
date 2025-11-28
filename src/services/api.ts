@@ -67,7 +67,7 @@ export const fetchHomeData = async (): Promise<Section[]> => {
 
         return [];
     } catch (error) {
-        console.error('Error fetching data:', error);
+        console.warn('Error fetching data:', error);
         return [];
     }
 };
@@ -227,13 +227,23 @@ export interface StreamSource {
     type?: string;
 }
 
+export interface StreamTrack {
+    file: string;
+    label: string;
+    kind: string;
+    default?: boolean;
+}
+
 export interface StreamData {
     sources: StreamSource[];
+    tracks?: StreamTrack[];
     title?: string;
 }
 
 export interface StreamResult {
-    url: string;
+    url: string; // Keep for backward compatibility or primary stream
+    sources?: StreamSource[];
+    tracks?: StreamTrack[];
     cookies: string;
     referer?: string;
 }
@@ -300,6 +310,8 @@ export const getStreamUrl = async (
 
                 return {
                     url: streamUrl,
+                    sources: data.sources,
+                    tracks: data.tracks,
                     cookies: cookies,
                     referer: `${streamBaseUrl}/`,
                 };
@@ -346,6 +358,8 @@ export const getStreamUrl = async (
 
                 return {
                     url: streamUrl,
+                    sources: data.sources,
+                    tracks: data.tracks,
                     cookies: cookies,
                     referer: `${streamBaseUrl}/`,
                 };
@@ -407,6 +421,8 @@ export const getStreamUrl = async (
 
             return {
                 url: streamUrl,
+                sources: data.sources,
+                tracks: data.tracks,
                 cookies: cookies,
                 referer: 'https://net51.cc/',
             };
