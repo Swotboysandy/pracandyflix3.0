@@ -8,13 +8,11 @@ import {
     Image,
     TouchableOpacity,
     Text,
-    Modal,
-    FlatList,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
-import { fetchHomeData, fetchProviders, Section, Movie, Provider } from '../services/api';
+import { fetchHomeData, Section, Movie } from '../services/api';
 import Row from '../components/Row';
 import MovieItem from '../components/MovieItem';
 import { RootStackParamList } from '../navigation/types';
@@ -26,19 +24,13 @@ const HomeScreen = ({ route }: any) => {
     const [sections, setSections] = useState<Section[]>([]);
     const [loading, setLoading] = useState(true);
     const [heroMovie, setHeroMovie] = useState<Movie | null>(null);
-    const [providers, setProviders] = useState<Provider[]>([]);
-    const [selectedProvider, setSelectedProvider] = useState<string>('Netflix');
-    const [isProviderModalVisible, setProviderModalVisible] = useState(false);
+    const [selectedProvider] = useState<string>('Netflix');
 
     useEffect(() => {
-        loadProviders();
         loadData();
     }, []);
 
-    const loadProviders = async () => {
-        const data = await fetchProviders();
-        setProviders(data);
-    };
+
 
     const loadData = async () => {
         const data = await fetchHomeData();
@@ -102,59 +94,11 @@ const HomeScreen = ({ route }: any) => {
 
             {/* Top Bar */}
             <View style={styles.topBar}>
-                <TouchableOpacity onPress={() => setProviderModalVisible(true)}>
-                    <Image source={{ uri: 'https://img.icons8.com/ios-filled/50/ffffff/menu--v1.png' }} style={styles.icon} />
-                </TouchableOpacity>
+                <View />
                 <TouchableOpacity onPress={() => navigation.navigate('Search')}>
                     <Image source={{ uri: 'https://img.icons8.com/ios-filled/50/ffffff/search--v1.png' }} style={styles.icon} />
                 </TouchableOpacity>
             </View>
-
-            {/* Provider Selection Modal */}
-            <Modal
-                visible={isProviderModalVisible}
-                transparent={true}
-                animationType="slide"
-                onRequestClose={() => setProviderModalVisible(false)}
-            >
-                <View style={styles.modalContainer}>
-                    <View style={styles.modalContent}>
-                        <Text style={styles.modalTitle}>Select Provider</Text>
-                        <FlatList
-                            data={providers}
-                            keyExtractor={(item) => item.id}
-                            renderItem={({ item }) => (
-                                <TouchableOpacity
-                                    style={[
-                                        styles.modalItem,
-                                        selectedProvider === item.id && styles.modalItemActive
-                                    ]}
-                                    onPress={() => {
-                                        setSelectedProvider(item.id);
-                                        setProviderModalVisible(false);
-                                    }}
-                                >
-                                    <Text style={[
-                                        styles.modalItemText,
-                                        selectedProvider === item.id && styles.modalItemTextActive
-                                    ]}>
-                                        {item.name}
-                                    </Text>
-                                    {selectedProvider === item.id && (
-                                        <Text style={styles.checkmark}>✓</Text>
-                                    )}
-                                </TouchableOpacity>
-                            )}
-                        />
-                        <TouchableOpacity
-                            style={styles.closeModalButton}
-                            onPress={() => setProviderModalVisible(false)}
-                        >
-                            <Text style={styles.closeModalText}>Close</Text>
-                        </TouchableOpacity>
-                    </View>
-                </View>
-            </Modal>
 
             <ScrollView
                 contentInsetAdjustmentBehavior="automatic"

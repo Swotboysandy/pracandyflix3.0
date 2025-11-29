@@ -23,6 +23,10 @@ interface ControlsOverlayProps {
     resizeMode: 'contain' | 'cover' | 'stretch';
     onNextEpisode?: () => void;
     onPiP?: () => void;
+    volume: number;
+    brightness: number;
+    onVolumeChange: (value: number) => void;
+    onBrightnessChange: (value: number) => void;
 }
 
 const { width, height } = Dimensions.get('window');
@@ -47,90 +51,8 @@ const ControlsOverlay: React.FC<ControlsOverlayProps> = ({
     onNextEpisode,
     onPiP,
 }) => {
-    const [volume, setVolume] = useState(0.5); // Mock volume state
-    const [brightness, setBrightness] = useState(0.5); // Mock brightness state
-    const [gestureType, setGestureType] = useState<'volume' | 'brightness' | 'seek' | null>(null);
-    const [gestureValue, setGestureValue] = useState(0);
     const [locked, setLocked] = useState(false);
     const [showUnlock, setShowUnlock] = useState(false);
-
-    const lastTapRef = useRef<number>(0);
-    const lastTapPosRef = useRef<{ x: number, y: number } | null>(null);
-    const doubleTapDelay = 300;
-
-    const panResponder = useRef(
-        PanResponder.create({
-            onStartShouldSetPanResponder: () => true,
-            onMoveShouldSetPanResponder: (_, gestureState) => {
-                if (locked) return false;
-                return Math.abs(gestureState.dx) > 10 || Math.abs(gestureState.dy) > 10;
-            },
-            onPanResponderGrant: () => {
-                setGestureType(null);
-            },
-            onPanResponderMove: (_, gestureState) => {
-                if (locked) return;
-                const { dx, dy, moveX, moveY } = gestureState;
-                const absDx = Math.abs(dx);
-                const absDy = Math.abs(dy);
-
-                if (!gestureType) {
-                    if (absDx > absDy) {
-                        setGestureType('seek');
-                    } else {
-                        if (moveX < width / 2) {
-                            setGestureType('brightness');
-                        } else {
-                            setGestureType('volume');
-                        }
-                    }
-                }
-
-                if (gestureType === 'seek') {
-                    const seekChange = (dx / width) * 90; // 90 seconds max seek
-                    setGestureValue(seekChange);
-                } else if (gestureType === 'brightness') {
-                    const brightnessChange = -dy / 200;
-                    setBrightness(prev => Math.max(0, Math.min(1, prev + brightnessChange)));
-                    setGestureValue(brightness);
-                } else if (gestureType === 'volume') {
-                    const volumeChange = -dy / 200;
-                    setVolume(prev => Math.max(0, Math.min(1, prev + volumeChange)));
-                    setGestureValue(volume);
-                }
-            },
-            onPanResponderRelease: (_, gestureState) => {
-                if (locked) {
-                    // Handle tap when locked to show unlock button
-                    if (Math.abs(gestureState.dx) < 10 && Math.abs(gestureState.dy) < 10) {
-                        setShowUnlock(true);
-                        setTimeout(() => setShowUnlock(false), 3000);
-                    }
-                    return;
-                }
-
-                if (gestureType === 'seek') {
-                    onSeek(currentTime + (gestureState.dx / width) * 90);
-                } else if (!gestureType) {
-                    // Handle Taps
-                    const now = Date.now();
-                    if (now - lastTapRef.current < doubleTapDelay) {
-                        // Double Tap
-                        const isLeft = gestureState.moveX < width / 2;
-                        if (isLeft) {
-                            onSkipBackward();
-                        } else {
-                            onSkipForward();
-                        }
-                        lastTapRef.current = 0; // Reset
-                    } else {
-                        lastTapRef.current = now;
-                    }
-                }
-                setGestureType(null);
-            },
-        })
-    ).current;
 
     const formatTime = (seconds: number) => {
         const hrs = Math.floor(seconds / 3600);
@@ -153,7 +75,10 @@ const ControlsOverlay: React.FC<ControlsOverlayProps> = ({
 
     if (locked) {
         return (
-            <View style={StyleSheet.absoluteFill} {...panResponder.panHandlers}>
+            <View style={StyleSheet.absoluteFill} onTouchEnd={() => {
+                setShowUnlock(true);
+                setTimeout(() => setShowUnlock(false), 3000);
+            }}>
                 {showUnlock && (
                     <TouchableOpacity style={styles.unlockButton} onPress={() => setLocked(false)}>
                         <Unlock color="#000" size={24} />
@@ -165,32 +90,7 @@ const ControlsOverlay: React.FC<ControlsOverlayProps> = ({
     }
 
     return (
-        <View style={StyleSheet.absoluteFill} {...panResponder.panHandlers}>
-            {/* Gesture Feedback Overlay */}
-            {gestureType && (
-                <View style={styles.gestureFeedback}>
-                    {gestureType === 'volume' && (
-                        <>
-                            <Volume2 color="#fff" size={40} />
-                            <Text style={styles.gestureText}>{Math.round(volume * 100)}%</Text>
-                        </>
-                    )}
-                    {gestureType === 'brightness' && (
-                        <>
-                            <Sun color="#fff" size={40} />
-                            <Text style={styles.gestureText}>{Math.round(brightness * 100)}%</Text>
-                        </>
-                    )}
-                    {gestureType === 'seek' && (
-                        <>
-                            <Text style={styles.gestureText}>
-                                {gestureValue > 0 ? '+' : ''}{Math.round(gestureValue)}s
-                            </Text>
-                        </>
-                    )}
-                </View>
-            )}
-
+        <View style={[StyleSheet.absoluteFill, { zIndex: 1000, elevation: 1000 }]} pointerEvents="box-none">
             {visible && (
                 <Animated.View entering={FadeIn.duration(200)} exiting={FadeOut.duration(200)} style={styles.container} pointerEvents="box-none">
                     {/* Top Bar */}

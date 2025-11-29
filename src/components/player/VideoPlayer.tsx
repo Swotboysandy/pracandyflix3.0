@@ -6,6 +6,7 @@ import ControlsOverlay from './ControlsOverlay';
 import SettingsModal from './SettingsModal';
 import { enterFullscreen, exitFullscreen } from './FullscreenHandler';
 import { StreamSource, StreamTrack } from '../../services/api';
+import PlayerGestures from './PlayerGestures';
 
 interface VideoPlayerProps {
     videoUrl: string;
@@ -38,6 +39,8 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ videoUrl, title, cookies, ref
     const [playbackSpeed, setPlaybackSpeed] = useState(1.0);
     const [settingsVisible, setSettingsVisible] = useState(false);
     const [pipEnabled, setPipEnabled] = useState(false);
+    const [volume, setVolume] = useState(1.0);
+    const [brightness, setBrightness] = useState(1.0);
 
     // Local tracks state to merge API tracks and detected tracks
     const [localTracks, setLocalTracks] = useState<StreamTrack[]>(tracks || []);
@@ -45,16 +48,20 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ videoUrl, title, cookies, ref
     const controlsTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const lastSaveTimeRef = useRef<number>(0);
     const initialSeekDoneRef = useRef(false);
+    const currentTimeRef = useRef<number>(0); // Track current time without state delay
 
     useEffect(() => {
         if (!pipEnabled) {
+            // Only enter fullscreen if NOT in PiP mode
             enterFullscreen();
             setIsFullscreen(true);
         }
+
+        // Cleanup: exit fullscreen when component unmounts
         return () => {
             exitFullscreen();
         };
-    }, [pipEnabled]);
+    }, []); // Run only once on mount
 
     useEffect(() => {
         const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
@@ -79,11 +86,9 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ videoUrl, title, cookies, ref
     // Initialize selected source if sources are available
     useEffect(() => {
         if (sources && sources.length > 0) {
-            // Try to find the source matching the initial videoUrl, or default to the first one/auto
             const match = sources.find(s => s.file === videoUrl);
             setSelectedSource(match || sources[0]);
         }
-        // Initialize local tracks from props
         if (tracks) {
             setLocalTracks(tracks);
         }
@@ -98,7 +103,6 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ videoUrl, title, cookies, ref
                     const time = parseFloat(savedTime);
                     if (time > 0) {
                         console.log('Resuming from:', time);
-                        // We'll seek when onLoad fires or if player is ready
                     }
                 }
             } catch (error) {
@@ -135,25 +139,16 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ videoUrl, title, cookies, ref
         setLoading(false);
         resetControlsTimeout();
 
-        console.log('Video Loaded. Data:', JSON.stringify({
-            duration: data.duration,
-            audioTracks: data.audioTracks,
-            textTracks: data.textTracks
-        }, null, 2));
-
-        // Merge detected tracks with API tracks
         let newTracks: StreamTrack[] = [...(tracks || [])];
 
-        // Process Audio Tracks
         if (data.audioTracks && Array.isArray(data.audioTracks)) {
             const detectedAudio = data.audioTracks.map((track: any, index: number) => ({
-                file: track.uri || `audio_${index}`, // URI might be empty for embedded tracks
+                file: track.uri || `audio_${index}`,
                 label: track.title || track.language || `Audio ${index + 1}`,
                 kind: 'audio',
                 default: track.selected
             }));
 
-            // Avoid duplicates if API already provided them (simple check by label)
             detectedAudio.forEach((dt: StreamTrack) => {
                 if (!newTracks.some(t => t.kind === 'audio' && t.label === dt.label)) {
                     newTracks.push(dt);
@@ -161,12 +156,11 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ videoUrl, title, cookies, ref
             });
         }
 
-        // Process Text Tracks
         if (data.textTracks && Array.isArray(data.textTracks)) {
             const detectedSubs = data.textTracks.map((track: any, index: number) => ({
                 file: track.uri || `sub_${index}`,
                 label: track.title || track.language || `Subtitle ${index + 1}`,
-                kind: 'subtitles', // or captions
+                kind: 'subtitles',
                 default: track.selected
             }));
 
@@ -177,19 +171,15 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ videoUrl, title, cookies, ref
             });
         }
 
-        // Update state if we found new tracks
         if (newTracks.length > 0) {
-            console.log('Updated tracks from stream:', newTracks);
             setLocalTracks(newTracks);
         }
 
-        // Resume playback
         if (!initialSeekDoneRef.current) {
             try {
                 const savedTime = await AsyncStorage.getItem(`progress_${videoUrl}`);
                 if (savedTime) {
                     const time = parseFloat(savedTime);
-                    // Only resume if not near the end (e.g., > 95%)
                     if (time < data.duration * 0.95) {
                         videoRef.current?.seek(time);
                     }
@@ -202,12 +192,12 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ videoUrl, title, cookies, ref
     };
 
     const handleProgress = (data: any) => {
-        setCurrentTime(data.currentTime);
-
-        // Save progress every 5 seconds
+        const time = data.currentTime;
+        currentTimeRef.current = time; // Update ref immediately
+        setCurrentTime(time);
         const now = Date.now();
         if (now - lastSaveTimeRef.current > 5000) {
-            saveProgress(data.currentTime);
+            saveProgress(time);
             lastSaveTimeRef.current = now;
         }
     };
@@ -220,19 +210,22 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ videoUrl, title, cookies, ref
     const handleSeek = (time: number) => {
         if (videoRef.current) {
             videoRef.current.seek(time);
+            currentTimeRef.current = time; // Update ref immediately
             setCurrentTime(time);
             resetControlsTimeout();
-            saveProgress(time); // Save on seek
+            saveProgress(time);
         }
     };
 
-    const handleSkipForward = () => {
-        handleSeek(Math.min(currentTime + 10, duration));
-    };
+    const handleSkipForward = useCallback(() => {
+        const current = currentTimeRef.current;
+        handleSeek(Math.min(current + 10, duration));
+    }, [duration, handleSeek]);
 
-    const handleSkipBackward = () => {
-        handleSeek(Math.max(currentTime - 10, 0));
-    };
+    const handleSkipBackward = useCallback(() => {
+        const current = currentTimeRef.current;
+        handleSeek(Math.max(current - 10, 0));
+    }, [handleSeek]);
 
     const handleToggleResizeMode = () => {
         const modes: ('contain' | 'cover' | 'stretch')[] = ['contain', 'cover', 'stretch'];
@@ -250,18 +243,6 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ videoUrl, title, cookies, ref
         setIsFullscreen(!isFullscreen);
     };
 
-    const handleScreenTap = () => {
-        if (settingsVisible) {
-            setSettingsVisible(false);
-            return;
-        }
-        if (controlsVisible) {
-            setControlsVisible(false);
-        } else {
-            resetControlsTimeout();
-        }
-    };
-
     const handlePiP = () => {
         setPipEnabled(!pipEnabled);
     };
@@ -270,7 +251,6 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ videoUrl, title, cookies, ref
         setPipEnabled(isActive);
     };
 
-    // Settings Handlers
     const handleSelectSource = (source: StreamSource) => {
         setSelectedSource(source);
         setCurrentVideoUrl(source.file);
@@ -288,7 +268,31 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ videoUrl, title, cookies, ref
         setPlaybackSpeed(speed);
     };
 
-    // Map tracks for react-native-video
+    const handleSingleTap = useCallback(() => {
+        if (settingsVisible) {
+            setSettingsVisible(false);
+            return;
+        }
+        setControlsVisible(!controlsVisible);
+        resetControlsTimeout();
+    }, [settingsVisible, controlsVisible, resetControlsTimeout]);
+
+    const handleDoubleTapLeft = useCallback(() => {
+        handleSkipBackward();
+    }, [handleSkipBackward]);
+
+    const handleDoubleTapRight = useCallback(() => {
+        handleSkipForward();
+    }, [handleSkipForward]);
+
+    const handleVolumeGesture = useCallback((delta: number) => {
+        setVolume(prev => Math.max(0, Math.min(1, prev + delta)));
+    }, []);
+
+    const handleBrightnessGesture = useCallback((delta: number) => {
+        setBrightness(prev => Math.max(0, Math.min(1, prev + delta)));
+    }, []);
+
     const textTracks = localTracks?.filter(t => t.kind !== 'audio').map(track => ({
         title: track.label || 'Unknown',
         language: (track.label || 'en').substring(0, 2).toLowerCase(),
@@ -310,9 +314,11 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ videoUrl, title, cookies, ref
     } : undefined;
 
     return (
-        <View style={styles.container} onTouchEnd={handleScreenTap}>
+        <View style={styles.container}>
             <StatusBar hidden={!pipEnabled} />
+
             <VideoCore
+                key={currentVideoUrl}
                 ref={videoRef}
                 videoUrl={currentVideoUrl}
                 cookies={cookies}
@@ -323,13 +329,35 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ videoUrl, title, cookies, ref
                 onLoad={handleLoad}
                 onProgress={handleProgress}
                 onEnd={onClose}
-                onError={(e: any) => console.log('Video Error:', e)}
+                onError={(e: any) => {
+                    console.log('Video Error:', e);
+                    setLoading(false); // Ensure loading is cleared on error
+                }}
                 onBuffer={(e: any) => setLoading(e.isBuffering)}
                 textTracks={textTracks}
                 selectedTextTrack={selectedTextTrackProp}
                 selectedAudioTrack={selectedAudioTrackProp}
                 pictureInPicture={pipEnabled}
                 onPictureInPictureStatusChanged={(data: any) => handlePiPStatusChanged(data.isActive)}
+                volume={volume}
+            />
+
+            <PlayerGestures
+                style={StyleSheet.absoluteFill}
+                onSingleTap={handleSingleTap}
+                onVolumeChange={handleVolumeGesture}
+                onBrightnessChange={handleBrightnessGesture}
+                volume={volume}
+                brightness={brightness}
+            />
+
+            {/* Brightness Overlay */}
+            <View
+                style={[
+                    styles.brightnessOverlay,
+                    { opacity: 1 - brightness }
+                ]}
+                pointerEvents="none"
             />
 
             {!pipEnabled && (
@@ -355,6 +383,10 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ videoUrl, title, cookies, ref
                     resizeMode={resizeMode}
                     onNextEpisode={onNextEpisode}
                     onPiP={handlePiP}
+                    volume={volume}
+                    brightness={brightness}
+                    onVolumeChange={handleVolumeGesture}
+                    onBrightnessChange={handleBrightnessGesture}
                 />
             )}
 
@@ -365,7 +397,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ videoUrl, title, cookies, ref
                     setControlsVisible(true);
                 }}
                 sources={sources}
-                tracks={localTracks} // Use localTracks here
+                tracks={localTracks}
                 selectedSource={selectedSource}
                 selectedTextTrack={selectedTextTrack}
                 selectedAudioTrack={selectedAudioTrack}
@@ -384,6 +416,12 @@ const styles = StyleSheet.create({
         flex: 1,
         backgroundColor: '#000',
     },
+    brightnessOverlay: {
+        ...StyleSheet.absoluteFillObject,
+        backgroundColor: '#000',
+        zIndex: 900, // Below controls (1000) but above video
+        elevation: 900,
+    }
 });
 
 export default VideoPlayer;

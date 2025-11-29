@@ -17,4 +17,3 @@ https://s20.freecdn1.top/files/70131314/1080p/1080p.m3u8?in=in=c64919c1ff16ef3fd
 https://s20.freecdn1.top/files/70131314/720p/720p.m3u8?in=in=c64919c1ff16ef3fd6b404f025185c3f::b536ff2714ebe431e28bfd604d4ed074::1764334577::ni
 #EXT-X-STREAM-INF:BANDWIDTH=400000,AUDIO="aac",RESOLUTION=854x480,CLOSED-CAPTIONS=NONE
 https://s20.freecdn1.top/files/70131314/480p/480p.m3u8?in=in=c64919c1ff16ef3fd6b404f025185c3f::b536ff2714ebe431e28bfd604d4ed074::1764334577::ni
-
