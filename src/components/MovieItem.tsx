@@ -41,8 +41,8 @@ const styles = StyleSheet.create({
         overflow: 'hidden',
     },
     image: {
-        width: 120,
-        height: 180,
+        width: 90,
+        height: 135,
         borderRadius: 4,
     },
     heroContainer: {

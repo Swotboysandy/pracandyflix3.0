@@ -35,6 +35,23 @@ const DetailsPage: React.FC<DetailsPageProps> = ({ movieId, onClose, onMoviePres
     const [seasonLoading, setSeasonLoading] = useState(false);
 
     const [currentEpisode, setCurrentEpisode] = useState<Episode | null>(null);
+    const [activeTab, setActiveTab] = useState<string>('Overview');
+
+    // Determine tabs based on content type
+    const tabs = (details?.type === 't' || details?.season)
+        ? ['Episodes', 'Overview', 'Casts', 'Reviews', 'Related']
+        : ['Overview', 'Casts', 'Reviews', 'Related'];
+
+    useEffect(() => {
+        if (details) {
+            // Default to Episodes for series, Overview for movies
+            if (details.type === 't' || details.season) {
+                setActiveTab('Episodes');
+            } else {
+                setActiveTab('Overview');
+            }
+        }
+    }, [details]);
 
     useEffect(() => {
         loadDetails();
@@ -78,17 +95,8 @@ const DetailsPage: React.FC<DetailsPageProps> = ({ movieId, onClose, onMoviePres
             <Image
                 source={{ uri: `https://imgcdn.kim/poster/341/${movie.id}.jpg` }}
                 style={styles.suggestionImage}
+                resizeMode="cover"
             />
-            <View style={styles.suggestionInfo}>
-                <View style={styles.suggestionHeader}>
-                    <Text style={styles.suggestionMatch}>{movie.m}</Text>
-                    <Text style={styles.suggestionYear}>{movie.y}</Text>
-                </View>
-                <Text style={styles.suggestionRuntime}>{movie.t}</Text>
-                <Text style={styles.suggestionDesc} numberOfLines={3}>
-                    {movie.d}
-                </Text>
-            </View>
         </TouchableOpacity>
     ), [onMoviePress]);
 
@@ -345,6 +353,14 @@ const DetailsPage: React.FC<DetailsPageProps> = ({ movieId, onClose, onMoviePres
                     <TouchableOpacity style={styles.backButton} onPress={onClose}>
                         <Text style={styles.backButtonText}>✕</Text>
                     </TouchableOpacity>
+                    {/* Poster Overlay */}
+                    <View style={styles.posterOverlay}>
+                        <Image
+                            source={{ uri: `https://imgcdn.kim/poster/341/${movieId}.jpg` }}
+                            style={styles.posterThumbnail}
+                            resizeMode="cover"
+                        />
+                    </View>
                 </View>
 
                 {/* Title and Info */}
@@ -402,104 +418,135 @@ const DetailsPage: React.FC<DetailsPageProps> = ({ movieId, onClose, onMoviePres
                     </TouchableOpacity>
                 </View>
 
-                {/* Description */}
-                <Text style={styles.description}>{details.desc}</Text>
-
-                {/* Cast */}
-                <View style={styles.infoSection}>
-                    <Text style={styles.infoLabel}>Cast: </Text>
-                    <Text style={styles.infoText}>{details.short_cast}</Text>
-                </View>
-
-                {/* Creator */}
-                {details.creator && (
-                    <View style={styles.infoSection}>
-                        <Text style={styles.infoLabel}>Creator: </Text>
-                        <Text style={styles.infoText}>{details.creator}</Text>
-                    </View>
-                )}
-
-                {/* Genre */}
-                <View style={styles.infoSection}>
-                    <Text style={styles.infoLabel}>Genres: </Text>
-                    <Text style={styles.infoText}>{details.genre}</Text>
-                </View>
-
-                {/* This movie is */}
-                <View style={styles.infoSection}>
-                    <Text style={styles.infoLabel}>This {details.type === 't' ? 'show' : 'movie'} is: </Text>
-                    <Text style={styles.infoText}>{details.thismovieis}</Text>
-                </View>
-
-                {/* Maturity Rating */}
-                <View style={styles.infoSection}>
-                    <Text style={styles.infoLabel}>Maturity rating: </Text>
-                    <View style={styles.badge}>
-                        <Text style={styles.badgeText}>{details.ua}</Text>
-                    </View>
-                    <Text style={styles.infoText}> {details.m_desc}</Text>
-                </View>
-
-                {details.m_reason && (
-                    <Text style={styles.reasonText}>{details.m_reason}</Text>
-                )}
-
-                {/* Episodes Section (for TV shows) */}
-                {details.episodes && allEpisodes.length > 0 && (
-                    <View style={styles.episodesSection}>
-                        <Text style={styles.sectionTitle}>Episodes</Text>
-
-                        {/* Season Selector */}
-                        {details.season && details.season.length > 1 && (
-                            <ScrollView
-                                horizontal
-                                showsHorizontalScrollIndicator={false}
-                                style={styles.seasonSelector}
+                {/* Tab Bar */}
+                <View style={styles.tabBar}>
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabContainer}>
+                        {tabs.map((tab) => (
+                            <TouchableOpacity
+                                key={tab}
+                                style={[styles.tabItem, activeTab === tab && styles.tabItemActive]}
+                                onPress={() => setActiveTab(tab)}
                             >
-                                {details.season.map((season) => (
-                                    <TouchableOpacity
-                                        key={season.id}
-                                        style={[
-                                            styles.seasonButton,
-                                            selectedSeason === season.s && styles.seasonButtonActive,
-                                        ]}
-                                        onPress={() => handleSeasonPress(season.s)}
-                                    >
-                                        <Text
+                                <Text style={[styles.tabText, activeTab === tab && styles.tabTextActive]}>
+                                    {tab}
+                                </Text>
+                                {activeTab === tab && <View style={styles.activeIndicator} />}
+                            </TouchableOpacity>
+                        ))}
+                    </ScrollView>
+                </View>
+
+                {/* Tab Content */}
+                <View style={styles.tabContent}>
+                    {/* Episodes Tab */}
+                    {activeTab === 'Episodes' && details?.episodes && allEpisodes.length > 0 && (
+                        <View style={styles.episodesSection}>
+                            {/* Season Selector */}
+                            {details.season && details.season.length > 1 && (
+                                <ScrollView
+                                    horizontal
+                                    showsHorizontalScrollIndicator={false}
+                                    style={styles.seasonSelector}
+                                >
+                                    {details.season.map((season) => (
+                                        <TouchableOpacity
+                                            key={season.id}
                                             style={[
-                                                styles.seasonButtonText,
-                                                selectedSeason === season.s && styles.seasonButtonTextActive,
+                                                styles.seasonButton,
+                                                selectedSeason === season.s && styles.seasonButtonActive,
                                             ]}
+                                            onPress={() => handleSeasonPress(season.s)}
                                         >
-                                            Season {season.s}
-                                        </Text>
-                                    </TouchableOpacity>
-                                ))}
-                            </ScrollView>
-                        )}
+                                            <Text
+                                                style={[
+                                                    styles.seasonButtonText,
+                                                    selectedSeason === season.s && styles.seasonButtonTextActive,
+                                                ]}
+                                            >
+                                                Season {season.s}
+                                            </Text>
+                                        </TouchableOpacity>
+                                    ))}
+                                </ScrollView>
+                            )}
 
-                        {/* Episodes List */}
-                        {seasonLoading ? (
-                            <ActivityIndicator size="small" color="#E50914" style={{ marginVertical: 20 }} />
-                        ) : (
-                            <View style={styles.episodesList}>
-                                {allEpisodes
-                                    .filter(ep => ep !== null && String(ep.s).replace(/[^0-9]/g, '') === String(selectedSeason).replace(/[^0-9]/g, ''))
-                                    .map((episode, index) => renderEpisode(episode, index))}
-                            </View>
-                        )}
-                    </View>
-                )}
-
-                {/* More Like This */}
-                {details.suggest && details.suggest.length > 0 && (
-                    <View style={styles.suggestionsSection}>
-                        <Text style={styles.sectionTitle}>More Like This</Text>
-                        <View style={styles.suggestionsList}>
-                            {details.suggest.filter(movie => movie !== null).map((movie) => renderSuggestion(movie))}
+                            {/* Episodes List */}
+                            {seasonLoading ? (
+                                <ActivityIndicator size="small" color="#E50914" style={{ marginVertical: 20 }} />
+                            ) : (
+                                <View style={styles.episodesList}>
+                                    {allEpisodes
+                                        .filter(ep => ep !== null && String(ep.s).replace(/[^0-9]/g, '') === String(selectedSeason).replace(/[^0-9]/g, ''))
+                                        .map((episode, index) => renderEpisode(episode, index))}
+                                </View>
+                            )}
                         </View>
-                    </View>
-                )}
+                    )}
+
+                    {/* Overview Tab */}
+                    {activeTab === 'Overview' && (
+                        <View>
+                            <Text style={styles.description}>{details.desc}</Text>
+
+                            <View style={styles.infoSection}>
+                                <Text style={styles.infoLabel}>Genres: </Text>
+                                <Text style={styles.infoText}>{details.genre}</Text>
+                            </View>
+
+                            <View style={styles.infoSection}>
+                                <Text style={styles.infoLabel}>This {details.type === 't' ? 'show' : 'movie'} is: </Text>
+                                <Text style={styles.infoText}>{details.thismovieis}</Text>
+                            </View>
+
+                            <View style={styles.infoSection}>
+                                <Text style={styles.infoLabel}>Maturity rating: </Text>
+                                <View style={styles.badge}>
+                                    <Text style={styles.badgeText}>{details.ua}</Text>
+                                </View>
+                            </View>
+                            <Text style={[styles.infoText, { paddingHorizontal: 20, marginBottom: 10 }]}>
+                                {details.m_desc}
+                            </Text>
+
+                            {details.m_reason && (
+                                <Text style={styles.reasonText}>{details.m_reason}</Text>
+                            )}
+                        </View>
+                    )}
+
+                    {/* Casts Tab */}
+                    {activeTab === 'Casts' && (
+                        <View>
+                            <View style={styles.infoSection}>
+                                <Text style={styles.infoLabel}>Cast: </Text>
+                                <Text style={styles.infoText}>{details.short_cast}</Text>
+                            </View>
+
+                            {details.creator && (
+                                <View style={styles.infoSection}>
+                                    <Text style={styles.infoLabel}>Creator: </Text>
+                                    <Text style={styles.infoText}>{details.creator}</Text>
+                                </View>
+                            )}
+                        </View>
+                    )}
+
+                    {/* Reviews Tab */}
+                    {activeTab === 'Reviews' && (
+                        <View style={styles.placeholderContainer}>
+                            <Text style={styles.placeholderText}>No reviews available yet.</Text>
+                        </View>
+                    )}
+
+                    {/* Related Tab */}
+                    {activeTab === 'Related' && details.suggest && details.suggest.length > 0 && (
+                        <View style={styles.suggestionsSection}>
+                            <View style={styles.suggestionsList}>
+                                {details.suggest.filter(movie => movie !== null).map((movie) => renderSuggestion(movie))}
+                            </View>
+                        </View>
+                    )}
+                </View>
 
                 <View style={styles.bottomSpacer} />
             </ScrollView>
@@ -535,12 +582,32 @@ const styles = StyleSheet.create({
     },
     heroContainer: {
         width: width,
-        height: 550,
+        height: 400,
         position: 'relative',
+        paddingHorizontal: 16,
+        marginBottom: 10,
     },
     heroImage: {
         width: '100%',
         height: '100%',
+        borderRadius: 16,
+    },
+    posterOverlay: {
+        position: 'absolute',
+        bottom: -40,
+        left: 30,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.5,
+        shadowRadius: 8,
+        elevation: 8,
+    },
+    posterThumbnail: {
+        width: 100,
+        height: 150,
+        borderRadius: 12,
+        borderWidth: 3,
+        borderColor: '#000',
     },
     backButton: {
         position: 'absolute',
@@ -565,6 +632,7 @@ const styles = StyleSheet.create({
     },
     titleContainer: {
         padding: 20,
+        paddingTop: 50,
         paddingBottom: 10,
     },
     title: {
@@ -622,23 +690,28 @@ const styles = StyleSheet.create({
     },
     playButton: {
         backgroundColor: '#fff',
-        paddingVertical: 10,
-        paddingHorizontal: 20,
-        borderRadius: 6,
+        paddingVertical: 16,
+        paddingHorizontal: 28,
+        borderRadius: 8,
         alignItems: 'center',
         justifyContent: 'center',
         flex: 1,
         flexDirection: 'row',
+        shadowColor: '#fff',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.3,
+        shadowRadius: 4,
+        elevation: 4,
     },
     playIcon: {
         color: '#000',
-        fontSize: 18,
-        marginRight: 8,
+        fontSize: 24,
+        marginRight: 10,
     },
     playButtonText: {
         color: '#000',
-        fontSize: 16,
-        fontWeight: '600',
+        fontSize: 20,
+        fontWeight: 'bold',
     },
     myListButton: {
         backgroundColor: '#2a2a2a',
@@ -648,6 +721,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
         minWidth: 60,
+        display: 'none', // Hidden until functionality is implemented
     },
     myListIcon: {
         color: '#fff',
@@ -667,6 +741,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
         minWidth: 60,
+        display: 'none', // Hidden until functionality is implemented
     },
     shareIcon: {
         color: '#fff',
@@ -689,7 +764,7 @@ const styles = StyleSheet.create({
         flexWrap: 'wrap',
         paddingHorizontal: 20,
         marginBottom: 10,
-        alignItems: 'center',
+        alignItems: 'flex-start',
     },
     infoLabel: {
         color: '#777',
@@ -796,23 +871,21 @@ const styles = StyleSheet.create({
         padding: 20,
     },
     suggestionsList: {
-        gap: 15,
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 10,
+        justifyContent: 'flex-start',
     },
     suggestionCard: {
-        flexDirection: 'row',
-        gap: 15,
-        backgroundColor: '#1a1a1a',
-        borderRadius: 10,
+        width: (width - 70) / 3, // 3 items per row with padding/gap
+        marginBottom: 10,
+        borderRadius: 4,
         overflow: 'hidden',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.2,
-        shadowRadius: 3,
-        elevation: 3,
     },
     suggestionImage: {
-        width: 130,
-        height: 195,
+        width: '100%',
+        height: 160,
+        borderRadius: 4,
     },
     suggestionInfo: {
         flex: 1,
@@ -855,7 +928,56 @@ const styles = StyleSheet.create({
         fontWeight: 'bold',
     },
     bottomSpacer: {
-        height: 50,
+        height: 100,
+    },
+    tabBar: {
+        borderBottomWidth: 1,
+        borderBottomColor: '#333',
+        marginBottom: 10,
+    },
+    tabContainer: {
+        paddingHorizontal: 10,
+    },
+    tabItem: {
+        paddingVertical: 12,
+        paddingHorizontal: 16,
+        marginRight: 10,
+        position: 'relative',
+    },
+    tabItemActive: {
+        // borderBottomWidth: 2,
+        // borderBottomColor: '#fff',
+    },
+    tabText: {
+        color: '#999',
+        fontSize: 15,
+        fontWeight: '500',
+    },
+    tabTextActive: {
+        color: '#fff',
+        fontWeight: 'bold',
+    },
+    activeIndicator: {
+        position: 'absolute',
+        bottom: 0,
+        left: 16,
+        right: 16,
+        height: 3,
+        backgroundColor: '#E50914',
+        borderTopLeftRadius: 3,
+        borderTopRightRadius: 3,
+    },
+    tabContent: {
+        minHeight: 200,
+    },
+    placeholderContainer: {
+        padding: 40,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    placeholderText: {
+        color: '#777',
+        fontSize: 16,
     },
 });
 
