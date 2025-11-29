@@ -48,6 +48,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ videoUrl, title, cookies, ref
     const controlsTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const lastSaveTimeRef = useRef<number>(0);
     const initialSeekDoneRef = useRef(false);
+    const currentTimeRef = useRef<number>(0); // Track current time without state delay
 
     useEffect(() => {
         if (!pipEnabled) {
@@ -55,6 +56,11 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ videoUrl, title, cookies, ref
             enterFullscreen();
             setIsFullscreen(true);
         }
+
+        // Cleanup: exit fullscreen when component unmounts
+        return () => {
+            exitFullscreen();
+        };
     }, []); // Run only once on mount
 
     useEffect(() => {
@@ -186,10 +192,12 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ videoUrl, title, cookies, ref
     };
 
     const handleProgress = (data: any) => {
-        setCurrentTime(data.currentTime);
+        const time = data.currentTime;
+        currentTimeRef.current = time; // Update ref immediately
+        setCurrentTime(time);
         const now = Date.now();
         if (now - lastSaveTimeRef.current > 5000) {
-            saveProgress(data.currentTime);
+            saveProgress(time);
             lastSaveTimeRef.current = now;
         }
     };
@@ -202,19 +210,22 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ videoUrl, title, cookies, ref
     const handleSeek = (time: number) => {
         if (videoRef.current) {
             videoRef.current.seek(time);
+            currentTimeRef.current = time; // Update ref immediately
             setCurrentTime(time);
             resetControlsTimeout();
             saveProgress(time);
         }
     };
 
-    const handleSkipForward = () => {
-        handleSeek(Math.min(currentTime + 10, duration));
-    };
+    const handleSkipForward = useCallback(() => {
+        const current = currentTimeRef.current;
+        handleSeek(Math.min(current + 10, duration));
+    }, [duration, handleSeek]);
 
-    const handleSkipBackward = () => {
-        handleSeek(Math.max(currentTime - 10, 0));
-    };
+    const handleSkipBackward = useCallback(() => {
+        const current = currentTimeRef.current;
+        handleSeek(Math.max(current - 10, 0));
+    }, [handleSeek]);
 
     const handleToggleResizeMode = () => {
         const modes: ('contain' | 'cover' | 'stretch')[] = ['contain', 'cover', 'stretch'];
@@ -334,8 +345,6 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ videoUrl, title, cookies, ref
             <PlayerGestures
                 style={StyleSheet.absoluteFill}
                 onSingleTap={handleSingleTap}
-                onDoubleTapLeft={handleDoubleTapLeft}
-                onDoubleTapRight={handleDoubleTapRight}
                 onVolumeChange={handleVolumeGesture}
                 onBrightnessChange={handleBrightnessGesture}
                 volume={volume}

@@ -4,8 +4,6 @@ import { Sun, Volume2 } from 'lucide-react-native';
 
 interface PlayerGesturesProps {
     onSingleTap: () => void;
-    onDoubleTapLeft: () => void;
-    onDoubleTapRight: () => void;
     onVolumeChange: (delta: number) => void;
     onBrightnessChange: (delta: number) => void;
     volume: number;
@@ -17,19 +15,14 @@ const { width } = Dimensions.get('window');
 
 const PlayerGestures: React.FC<PlayerGesturesProps> = ({
     onSingleTap,
-    onDoubleTapLeft,
-    onDoubleTapRight,
     onVolumeChange,
     onBrightnessChange,
     volume,
     brightness,
     style,
 }) => {
-    const [gestureType, setGestureType] = useState<number>(0);
-    const lastTapRef = useRef<number>(0);
-    const lastTapXRef = useRef<number>(0);
+    const [gestureType, setGestureType] = useState<number>(0); // 0: none, 1: volume, 2: brightness
     const prevYRef = useRef<number>(0);
-    const doubleTapDetected = useRef<boolean>(false);
     const feedbackOpacity = useRef(new Animated.Value(0)).current;
 
     useEffect(() => {
@@ -51,35 +44,11 @@ const PlayerGestures: React.FC<PlayerGesturesProps> = ({
     const panResponder = useRef(
         PanResponder.create({
             onStartShouldSetPanResponder: () => true,
-            onPanResponderGrant: (evt) => {
-                const now = Date.now();
-                const locationX = evt.nativeEvent.locationX;
-
-                // Check for double tap
-                if (now - lastTapRef.current < 300 && Math.abs(locationX - lastTapXRef.current) < 50) {
-                    doubleTapDetected.current = true;
-                    if (locationX < width / 2) {
-                        setGestureType(3);
-                        onDoubleTapLeft();
-                        setTimeout(() => setGestureType(0), 1000);
-                    } else {
-                        setGestureType(4);
-                        onDoubleTapRight();
-                        setTimeout(() => setGestureType(0), 1000);
-                    }
-                    lastTapRef.current = 0;
-                } else {
-                    doubleTapDetected.current = false;
-                    lastTapRef.current = now;
-                    lastTapXRef.current = locationX;
-                }
-                prevYRef.current = 0;
-            },
             onPanResponderMove: (evt, gestureState) => {
                 const locationX = evt.nativeEvent.locationX;
                 const dy = gestureState.dy;
 
-                // Only trigger volume/brightness if there's significant movement
+                // Only vertical swipe for volume/brightness
                 if (Math.abs(dy) > 10) {
                     const step = dy - prevYRef.current;
                     prevYRef.current = dy;
@@ -95,18 +64,14 @@ const PlayerGestures: React.FC<PlayerGesturesProps> = ({
                 }
             },
             onPanResponderRelease: (evt, gestureState) => {
+                const dx = gestureState.dx;
+                const dy = gestureState.dy;
+
                 // Check if it was just a tap (no significant movement)
-                if (Math.abs(gestureState.dx) < 10 && Math.abs(gestureState.dy) < 10) {
-                    // If not part of double tap, schedule single tap
-                    if (!doubleTapDetected.current) {
-                        setTimeout(() => {
-                            if (!doubleTapDetected.current) {
-                                onSingleTap();
-                            }
-                        }, 250);
-                    }
+                if (Math.abs(dx) < 10 && Math.abs(dy) < 10) {
+                    onSingleTap();
                 } else {
-                    // It was a pan gesture, clear feedback
+                    // It was a swipe, clear feedback
                     setGestureType(0);
                 }
                 prevYRef.current = 0;
@@ -129,12 +94,6 @@ const PlayerGestures: React.FC<PlayerGesturesProps> = ({
                             <Sun color="#fff" size={32} />
                             <Text style={styles.feedbackText}>{Math.round(brightness * 100)}%</Text>
                         </View>
-                    )}
-                    {gestureType === 3 && (
-                        <Text style={styles.feedbackText}>-10s</Text>
-                    )}
-                    {gestureType === 4 && (
-                        <Text style={styles.feedbackText}>+10s</Text>
                     )}
                 </View>
             </Animated.View>
