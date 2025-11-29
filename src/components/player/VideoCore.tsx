@@ -17,10 +17,11 @@ interface VideoCoreProps {
     selectedTextTrack?: any;
     selectedVideoTrack?: any;
     referer?: string;
+    volume?: number;
     [key: string]: any;
 }
 
-const VideoCore = forwardRef<VideoRef, VideoCoreProps>(({ videoUrl, cookies, referer, style, ...props }, ref) => {
+const VideoCore = forwardRef<VideoRef, VideoCoreProps>(({ videoUrl, cookies, referer, style, volume, ...props }, ref) => {
     return (
         <Video
             ref={ref}
@@ -40,9 +41,10 @@ const VideoCore = forwardRef<VideoRef, VideoCoreProps>(({ videoUrl, cookies, ref
             bufferConfig={{
                 minBufferMs: 15000,
                 maxBufferMs: 50000,
-                bufferForPlaybackMs: 2500,
+                bufferForPlaybackMs: 1000, // Reduced for faster start
                 bufferForPlaybackAfterRebufferMs: 5000,
             }}
+            volume={volume ?? 1.0}
             preventsDisplaySleepDuringVideoPlayback
             {...props}
         />
