@@ -10,27 +10,31 @@ interface MovieItemProps {
 
 const { width } = Dimensions.get('window');
 
+import ScalePressable from './ScalePressable';
+
+// ... imports
+
 const MovieItem: React.FC<MovieItemProps> = ({ movie, onPress, isHero }) => {
     if (isHero) {
         return (
-            <TouchableOpacity onPress={() => onPress(movie)} style={styles.heroContainer}>
+            <ScalePressable onPress={() => onPress(movie)} style={styles.heroContainer} scaleTo={0.98}>
                 <Image
                     source={{ uri: movie.imageUrl }}
                     style={styles.heroImage}
                     resizeMode="cover"
                 />
-            </TouchableOpacity>
+            </ScalePressable>
         );
     }
 
     return (
-        <TouchableOpacity onPress={() => onPress(movie)} style={styles.container}>
+        <ScalePressable onPress={() => onPress(movie)} style={styles.container}>
             <Image
                 source={{ uri: movie.imageUrl }}
                 style={styles.image}
                 resizeMode="cover"
             />
-        </TouchableOpacity>
+        </ScalePressable>
     );
 };
 

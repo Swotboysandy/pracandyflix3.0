@@ -37,11 +37,11 @@ const VideoCore = forwardRef<VideoRef, VideoCoreProps>(({ videoUrl, cookies, ref
             style={[styles.video, style]}
             resizeMode={props.resizeMode || "contain"}
             progressUpdateInterval={1000}
-            minLoadRetryCount={5}
+            minLoadRetryCount={10}
             bufferConfig={{
-                minBufferMs: 15000,
-                maxBufferMs: 50000,
-                bufferForPlaybackMs: 1000, // Reduced for faster start
+                minBufferMs: 25000,
+                maxBufferMs: 100000,
+                bufferForPlaybackMs: 2500,
                 bufferForPlaybackAfterRebufferMs: 5000,
             }}
             volume={volume ?? 1.0}

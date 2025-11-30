@@ -11,8 +11,7 @@ const SearchScreen = () => {
             onMoviePress={(movie) => {
                 navigation.navigate('Details', {
                     movieId: movie.id,
-                    isPrimeVideo: movie.isPrimeVideo,
-                    isHotstar: movie.isHotstar,
+                    providerId: movie.provider,
                 });
             }}
         />

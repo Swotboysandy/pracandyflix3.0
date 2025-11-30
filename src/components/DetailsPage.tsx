@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import { fetchMovieDetails, MovieDetails, Episode, SuggestedMovie, getStreamUrl, Movie } from '../services/api';
 import VideoPlayer from './VideoPlayer';
+import FadeInView from './FadeInView';
 
 interface DetailsPageProps {
     movieId: string;
@@ -90,10 +91,10 @@ const DetailsPage: React.FC<DetailsPageProps> = ({ movieId, onClose, onMoviePres
         <TouchableOpacity
             key={movie.id}
             style={styles.suggestionCard}
-            onPress={() => onMoviePress({ id: movie.id, title: movie.t, imageUrl: `https://imgcdn.kim/poster/341/${movie.id}.jpg` })}
+            onPress={() => onMoviePress({ id: movie.id, title: movie.t, imageUrl: `https://imgcdn.kim/poster/v/${movie.id}.jpg` })}
         >
             <Image
-                source={{ uri: `https://imgcdn.kim/poster/341/${movie.id}.jpg` }}
+                source={{ uri: `https://imgcdn.kim/poster/v/${movie.id}.jpg` }}
                 style={styles.suggestionImage}
                 resizeMode="cover"
             />
@@ -339,6 +340,16 @@ const DetailsPage: React.FC<DetailsPageProps> = ({ movieId, onClose, onMoviePres
         );
     }
 
+    const getPosterUrl = (id: string, type: 'poster' | 'hero') => {
+        if (providerId === 'Hotstar') {
+            return `https://imgcdn.media/hs/${type === 'hero' ? 'v' : 'v'}/${id}.jpg`;
+        } else if (providerId === 'Prime' || providerId === 'Prime Video') {
+            return `https://imgcdn.kim/pv/${type === 'hero' ? 'v' : 'v'}/${id}.jpg`;
+        } else {
+            return `https://imgcdn.kim/poster/${type === 'hero' ? 'v' : 'v'}/${id}.jpg`;
+        }
+    };
+
     return (
         <View style={styles.container}>
             <StatusBar barStyle="light-content" backgroundColor="#000" />
@@ -346,7 +357,7 @@ const DetailsPage: React.FC<DetailsPageProps> = ({ movieId, onClose, onMoviePres
                 {/* Hero Image */}
                 <View style={styles.heroContainer}>
                     <Image
-                        source={{ uri: `https://imgcdn.kim/poster/v/${movieId}.jpg` }}
+                        source={{ uri: getPosterUrl(movieId, 'hero') }}
                         style={styles.heroImage}
                         resizeMode="cover"
                     />
@@ -356,7 +367,7 @@ const DetailsPage: React.FC<DetailsPageProps> = ({ movieId, onClose, onMoviePres
                     {/* Poster Overlay */}
                     <View style={styles.posterOverlay}>
                         <Image
-                            source={{ uri: `https://imgcdn.kim/poster/341/${movieId}.jpg` }}
+                            source={{ uri: getPosterUrl(movieId, 'poster') }}
                             style={styles.posterThumbnail}
                             resizeMode="cover"
                         />
@@ -364,59 +375,62 @@ const DetailsPage: React.FC<DetailsPageProps> = ({ movieId, onClose, onMoviePres
                 </View>
 
                 {/* Title and Info */}
-                <View style={styles.titleContainer}>
-                    <Text style={styles.title}>{details.title}</Text>
-                    <View style={styles.metaInfo}>
-                        {details.provider && (
-                            <View style={[styles.badge, {
-                                backgroundColor: details.provider === 'Netflix' ? '#E50914' : details.provider === 'Prime Video' ? '#00A8E1' : '#00248a',
-                                borderColor: 'transparent',
-                                marginRight: 8,
-                                paddingHorizontal: 8,
-                                paddingVertical: 4
-                            }]}>
-                                <Text style={[styles.badgeText, { color: '#fff', fontWeight: 'bold', fontSize: 13 }]}>
-                                    {details.provider}
-                                </Text>
+                {/* Title and Info */}
+                <FadeInView duration={600} slideUp>
+                    <View style={styles.titleContainer}>
+                        <Text style={styles.title}>{details.title}</Text>
+                        <View style={styles.metaInfo}>
+                            {details.provider && (
+                                <View style={[styles.badge, {
+                                    backgroundColor: details.provider === 'Netflix' ? '#E50914' : (details.provider === 'Prime' || details.provider === 'Prime Video') ? '#00A8E1' : '#00248a',
+                                    borderColor: 'transparent',
+                                    marginRight: 8,
+                                    paddingHorizontal: 8,
+                                    paddingVertical: 4
+                                }]}>
+                                    <Text style={[styles.badgeText, { color: '#fff', fontWeight: 'bold', fontSize: 13 }]}>
+                                        {details.provider}
+                                    </Text>
+                                </View>
+                            )}
+                            <Text style={styles.match}>{details.match}</Text>
+                            <Text style={styles.year}>{details.year}</Text>
+                            <View style={styles.badge}>
+                                <Text style={styles.badgeText}>{details.ua}</Text>
                             </View>
-                        )}
-                        <Text style={styles.match}>{details.match}</Text>
-                        <Text style={styles.year}>{details.year}</Text>
-                        <View style={styles.badge}>
-                            <Text style={styles.badgeText}>{details.ua}</Text>
-                        </View>
-                        <Text style={styles.runtime}>{details.runtime}</Text>
-                        <View style={styles.hdBadge}>
-                            <Text style={styles.hdText}>{details.hdsd}</Text>
+                            <Text style={styles.runtime}>{details.runtime}</Text>
+                            <View style={styles.hdBadge}>
+                                <Text style={styles.hdText}>{details.hdsd}</Text>
+                            </View>
                         </View>
                     </View>
-                </View>
 
-                {/* Action Buttons */}
-                <View style={styles.actionButtons}>
-                    <TouchableOpacity
-                        style={styles.playButton}
-                        onPress={handlePlayPress}
-                        disabled={loadingStream}
-                    >
-                        {loadingStream ? (
-                            <ActivityIndicator size="small" color="#000" />
-                        ) : (
-                            <>
-                                <Text style={styles.playIcon}>▶</Text>
-                                <Text style={styles.playButtonText}>Play</Text>
-                            </>
-                        )}
-                    </TouchableOpacity>
-                    <TouchableOpacity style={styles.myListButton}>
-                        <Text style={styles.myListIcon}>+</Text>
-                        <Text style={styles.myListButtonText}>My List</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity style={styles.shareButton}>
-                        <Text style={styles.shareIcon}>⤴</Text>
-                        <Text style={styles.shareButtonText}>Share</Text>
-                    </TouchableOpacity>
-                </View>
+                    {/* Action Buttons */}
+                    <View style={styles.actionButtons}>
+                        <TouchableOpacity
+                            style={styles.playButton}
+                            onPress={handlePlayPress}
+                            disabled={loadingStream}
+                        >
+                            {loadingStream ? (
+                                <ActivityIndicator size="small" color="#000" />
+                            ) : (
+                                <>
+                                    <Text style={styles.playIcon}>▶</Text>
+                                    <Text style={styles.playButtonText}>Play</Text>
+                                </>
+                            )}
+                        </TouchableOpacity>
+                        <TouchableOpacity style={styles.myListButton}>
+                            <Text style={styles.myListIcon}>+</Text>
+                            <Text style={styles.myListButtonText}>My List</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity style={styles.shareButton}>
+                            <Text style={styles.shareIcon}>⤴</Text>
+                            <Text style={styles.shareButtonText}>Share</Text>
+                        </TouchableOpacity>
+                    </View>
+                </FadeInView>
 
                 {/* Tab Bar */}
                 <View style={styles.tabBar}>

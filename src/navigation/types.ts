@@ -4,4 +4,5 @@ export type RootStackParamList = {
   Details: { movieId: string; providerId?: string };
   Search: undefined;
   Player: { videoUrl: string; title: string; cookies: string };
+  Prime: undefined;
 };
