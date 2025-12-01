@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
 import {
-    ScrollView,
     StatusBar,
     StyleSheet,
     View,
@@ -10,6 +9,7 @@ import {
     Text,
     Modal,
     TouchableWithoutFeedback,
+    FlatList,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -102,34 +102,37 @@ const HomeScreen = ({ route }: any) => {
     }
 
     return (
-        <GradientBackground colors={['#4a0000', '#1a0000', '#000000']} style={{ flex: 1 }}>
+        <GradientBackground colors={['#000000', '#000000', '#000000']} style={{ flex: 1 }}>
             <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
 
             <View style={{ flex: 1 }}>
-                <ScrollView
-                    contentInsetAdjustmentBehavior="automatic"
-                    style={styles.scrollView}
-                    contentContainerStyle={[styles.scrollContent, { paddingTop: 80 + insets.top }]}
-                >
-                    {heroMovie && (
-                        <FadeInView duration={800} slideUp>
-                            <View style={styles.heroWrapper}>
-                                <MovieItem movie={heroMovie} onPress={handleMoviePress} isHero />
-                            </View>
+                <FlatList
+                    data={sections}
+                    keyExtractor={(item, index) => `${item.title}-${index}`}
+                    renderItem={({ item, index }) => (
+                        <FadeInView delay={index * 100} slideUp duration={600}>
+                            <Row
+                                section={item}
+                                onMoviePress={handleMoviePress}
+                            />
                         </FadeInView>
                     )}
-
-                    <View style={styles.rowsContainer}>
-                        {sections.map((section, index) => (
-                            <FadeInView key={`${section.title}-${index}`} delay={index * 100} slideUp duration={600}>
-                                <Row
-                                    section={section}
-                                    onMoviePress={handleMoviePress}
-                                />
+                    ListHeaderComponent={
+                        heroMovie ? (
+                            <FadeInView duration={800} slideUp>
+                                <View style={styles.heroWrapper}>
+                                    <MovieItem movie={heroMovie} onPress={handleMoviePress} isHero />
+                                </View>
                             </FadeInView>
-                        ))}
-                    </View>
-                </ScrollView>
+                        ) : null
+                    }
+                    contentContainerStyle={[styles.scrollContent, { paddingTop: 80 + insets.top }]}
+                    showsVerticalScrollIndicator={false}
+                    removeClippedSubviews={true}
+                    initialNumToRender={3}
+                    maxToRenderPerBatch={3}
+                    windowSize={5}
+                />
 
                 {/* Glass Header */}
                 <GlassHeader

@@ -21,19 +21,21 @@ interface VideoCoreProps {
     [key: string]: any;
 }
 
-const VideoCore = forwardRef<VideoRef, VideoCoreProps>(({ videoUrl, cookies, referer, style, volume, ...props }, ref) => {
+const VideoCore = React.memo(forwardRef<VideoRef, VideoCoreProps>(({ videoUrl, cookies, referer, style, volume, ...props }, ref) => {
+    const source = React.useMemo(() => ({
+        uri: videoUrl,
+        type: 'm3u8',
+        headers: {
+            'Cookie': cookies,
+            'Referer': referer || 'https://net51.cc/',
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+        },
+    }), [videoUrl, cookies, referer]);
+
     return (
         <Video
             ref={ref}
-            source={{
-                uri: videoUrl,
-                type: 'm3u8',
-                headers: {
-                    'Cookie': cookies,
-                    'Referer': referer || 'https://net51.cc/',
-                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-                },
-            }}
+            source={source}
             style={[styles.video, style]}
             resizeMode={props.resizeMode || "contain"}
             progressUpdateInterval={1000}
@@ -49,7 +51,7 @@ const VideoCore = forwardRef<VideoRef, VideoCoreProps>(({ videoUrl, cookies, ref
             {...props}
         />
     );
-});
+}));
 
 const styles = StyleSheet.create({
     video: {

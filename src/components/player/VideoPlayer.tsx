@@ -122,7 +122,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ videoUrl, title, cookies, ref
 
     const resetControlsTimeout = useCallback(() => {
         if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
-        setControlsVisible(true);
+        // Don't force visibility - let caller decide
         if (!paused && !settingsVisible) {
             controlsTimeoutRef.current = setTimeout(() => {
                 setControlsVisible(false);
@@ -207,7 +207,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ videoUrl, title, cookies, ref
         resetControlsTimeout();
     };
 
-    const handleSeek = (time: number) => {
+    const handleSeek = useCallback((time: number) => {
         if (videoRef.current) {
             videoRef.current.seek(time);
             currentTimeRef.current = time; // Update ref immediately
@@ -215,7 +215,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ videoUrl, title, cookies, ref
             resetControlsTimeout();
             saveProgress(time);
         }
-    };
+    }, [resetControlsTimeout, videoUrl]);
 
     const handleSkipForward = useCallback(() => {
         const current = currentTimeRef.current;
@@ -273,9 +273,16 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ videoUrl, title, cookies, ref
             setSettingsVisible(false);
             return;
         }
-        setControlsVisible(!controlsVisible);
-        resetControlsTimeout();
-    }, [settingsVisible, controlsVisible, resetControlsTimeout]);
+        // Toggle and only reset timeout if showing controls
+        setControlsVisible(prev => {
+            const newValue = !prev;
+            if (newValue) {
+                // Only start auto-hide if showing controls
+                setTimeout(() => resetControlsTimeout(), 0);
+            }
+            return newValue;
+        });
+    }, [settingsVisible, resetControlsTimeout]);
 
     const handleDoubleTapLeft = useCallback(() => {
         handleSkipBackward();
@@ -345,6 +352,8 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ videoUrl, title, cookies, ref
             <PlayerGestures
                 style={StyleSheet.absoluteFill}
                 onSingleTap={handleSingleTap}
+                onDoubleTapLeft={handleDoubleTapLeft}
+                onDoubleTapRight={handleDoubleTapRight}
                 onVolumeChange={handleVolumeGesture}
                 onBrightnessChange={handleBrightnessGesture}
                 volume={volume}

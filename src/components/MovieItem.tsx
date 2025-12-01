@@ -60,4 +60,4 @@ const styles = StyleSheet.create({
     },
 });
 
-export default MovieItem;
+export default React.memo(MovieItem);
