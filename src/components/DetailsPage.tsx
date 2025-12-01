@@ -337,6 +337,9 @@ const DetailsPage: React.FC<DetailsPageProps> = ({ movieId, onClose, onMoviePres
                 tracks={videoStream.tracks}
                 onClose={handleCloseVideo}
                 onNextEpisode={nextEp ? handleNextEpisode : undefined}
+                movieId={movieId}
+                poster={getPosterUrl(movieId, 'poster')}
+                provider={providerId}
             />
         );
     }

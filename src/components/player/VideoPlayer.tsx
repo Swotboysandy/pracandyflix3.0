@@ -5,7 +5,7 @@ import VideoCore from './VideoCore';
 import ControlsOverlay from './ControlsOverlay';
 import SettingsModal from './SettingsModal';
 import { enterFullscreen, exitFullscreen } from './FullscreenHandler';
-import { StreamSource, StreamTrack } from '../../services/api';
+import { StreamSource, StreamTrack, addToHistory } from '../../services/api';
 import PlayerGestures from './PlayerGestures';
 
 interface VideoPlayerProps {
@@ -17,9 +17,13 @@ interface VideoPlayerProps {
     tracks?: StreamTrack[];
     onClose: () => void;
     onNextEpisode?: () => void;
+    movieId?: string;
+    poster?: string;
+    provider?: string;
 }
 
-const VideoPlayer: React.FC<VideoPlayerProps> = ({ videoUrl, title, cookies, referer, sources, tracks, onClose, onNextEpisode }) => {
+const VideoPlayer: React.FC<VideoPlayerProps> = (props) => {
+    const { videoUrl, title, cookies, referer, sources, tracks, onClose, onNextEpisode } = props;
     const videoRef = useRef<any>(null);
 
     // Player State
@@ -198,6 +202,20 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ videoUrl, title, cookies, ref
         const now = Date.now();
         if (now - lastSaveTimeRef.current > 5000) {
             saveProgress(time);
+
+            // Save to global history
+            if (props.movieId && props.poster) {
+                addToHistory({
+                    id: props.movieId,
+                    title: title,
+                    imageUrl: props.poster,
+                    progress: time,
+                    duration: duration,
+                    timestamp: now,
+                    provider: props.provider || 'Netflix'
+                });
+            }
+
             lastSaveTimeRef.current = now;
         }
     };

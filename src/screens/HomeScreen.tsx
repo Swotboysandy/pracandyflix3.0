@@ -13,8 +13,9 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
+import { useFocusEffect } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
-import { fetchHomeData, Section, Movie } from '../services/api';
+import { fetchHomeData, Section, Movie, fetchMovieDetails, getHistory } from '../services/api';
 import Row from '../components/Row';
 import MovieItem from '../components/MovieItem';
 import { RootStackParamList } from '../navigation/types';
@@ -22,6 +23,7 @@ import { LayoutGrid } from 'lucide-react-native';
 import GradientBackground from '../components/GradientBackground';
 import FadeInView from '../components/FadeInView';
 import GlassHeader from '../components/GlassHeader';
+import HomeSkeleton from '../components/HomeSkeleton';
 
 type HomeScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Home'>;
 
@@ -33,6 +35,27 @@ const HomeScreen = ({ route }: any) => {
     const [heroMovie, setHeroMovie] = useState<Movie | null>(null);
     const [selectedProvider] = useState<string>('Netflix');
     const [isProviderModalVisible, setIsProviderModalVisible] = useState(false);
+    const [historySection, setHistorySection] = useState<Section | null>(null);
+
+
+
+    useFocusEffect(
+        React.useCallback(() => {
+            loadHistory();
+        }, [])
+    );
+
+    const loadHistory = async () => {
+        const history = await getHistory('Netflix');
+        if (history.length > 0) {
+            setHistorySection({
+                title: 'Continue Watching for You',
+                movies: history
+            });
+        } else {
+            setHistorySection(null);
+        }
+    };
 
     useEffect(() => {
         loadData();
@@ -61,15 +84,39 @@ const HomeScreen = ({ route }: any) => {
         const displayData = filteredData.length > 0 ? filteredData : (route?.name === 'HomeTab' ? data : []);
 
         const featuredSection = displayData.find(s => s.title === 'Featured');
+
+        let heroSource = null;
         if (featuredSection && featuredSection.movies.length > 0) {
-            setHeroMovie(featuredSection.movies[0]);
+            heroSource = featuredSection.movies[0];
             setSections(displayData.filter(s => s.title !== 'Featured'));
         } else if (displayData.length > 0 && displayData[0].movies.length > 0) {
-            setHeroMovie(displayData[0].movies[0]);
+            heroSource = displayData[0].movies[0];
             setSections(displayData);
+        }
+        if (heroSource) {
+            // Optimistic update: Show hero immediately with available data
+            setHeroMovie(heroSource);
+
+            // Fetch real details to get the actual title because the list API only returns IDs
+            fetchMovieDetails(heroSource.id).then(details => {
+                console.log('Hero Movie Details:', JSON.stringify(details, null, 2));
+                if (details && details.title) {
+                    const d = details as any;
+                    setHeroMovie({
+                        ...heroSource,
+                        title: details.title,
+                        // Prioritize: 1. High-Res Poster (Vertical), 2. Upgraded List Image (Vertical), 3. Original, 4. Backdrop (Fallback)
+                        imageUrl: d.poster || d.image || heroSource.imageUrl || heroSource.originalImageUrl || d.backdrop,
+                        tags: d.genre ? d.genre.split(',').slice(0, 3).join(' • ') : '', // Limit to 3 tags
+                    } as any); // Cast to any to allow extra props
+                }
+                // No need for else/catch to setHeroMovie(heroSource) as it's already set
+            }).catch(() => {
+                // Keep existing heroSource
+            });
         } else {
-            setSections(displayData);
             setHeroMovie(null);
+            setSections(displayData);
         }
 
         setLoading(false);
@@ -93,27 +140,38 @@ const HomeScreen = ({ route }: any) => {
         }
     };
 
+    const renderItem = React.useCallback(({ item, index }: { item: Section; index: number }) => (
+        <FadeInView delay={index * 100} slideUp duration={600}>
+            <Row
+                section={item}
+                onMoviePress={handleMoviePress}
+            />
+        </FadeInView>
+    ), [handleMoviePress]);
+
     if (loading) {
         return (
-            <View style={styles.loadingContainer}>
-                <ActivityIndicator size="large" color="#E50914" />
-            </View>
+            <GradientBackground colors={['#39101E', '#080204']} style={{ flex: 1 }}>
+                <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
+                <HomeSkeleton />
+            </GradientBackground>
         );
     }
 
     return (
-        <GradientBackground colors={['#000000', '#000000', '#000000']} style={{ flex: 1 }}>
+        <GradientBackground colors={['#39101E', '#080204']} style={{ flex: 1 }}>
             <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
 
             <View style={{ flex: 1 }}>
                 <FlatList
-                    data={sections}
+                    data={historySection ? [historySection, ...sections] : sections}
                     keyExtractor={(item, index) => `${item.title}-${index}`}
                     renderItem={({ item, index }) => (
                         <FadeInView delay={index * 100} slideUp duration={600}>
                             <Row
                                 section={item}
                                 onMoviePress={handleMoviePress}
+                                variant={item.title === 'Continue Watching for You' ? 'continue-watching' : 'standard'}
                             />
                         </FadeInView>
                     )}
@@ -121,12 +179,17 @@ const HomeScreen = ({ route }: any) => {
                         heroMovie ? (
                             <FadeInView duration={800} slideUp>
                                 <View style={styles.heroWrapper}>
-                                    <MovieItem movie={heroMovie} onPress={handleMoviePress} isHero />
+                                    <MovieItem
+                                        movie={heroMovie}
+                                        onPress={handleMoviePress}
+                                        isHero
+                                        tags={(heroMovie as any).tags} // Pass tags prop
+                                    />
                                 </View>
                             </FadeInView>
                         ) : null
                     }
-                    contentContainerStyle={[styles.scrollContent, { paddingTop: 80 + insets.top }]}
+                    contentContainerStyle={[styles.scrollContent, { paddingTop: 40 + insets.top }]}
                     showsVerticalScrollIndicator={false}
                     removeClippedSubviews={true}
                     initialNumToRender={3}
@@ -141,9 +204,7 @@ const HomeScreen = ({ route }: any) => {
                     tint="dark"
                 >
                     <View style={styles.headerContent}>
-                        <TouchableOpacity onPress={toggleProviderModal}>
-                            <LayoutGrid color="white" size={24} />
-                        </TouchableOpacity>
+                        <View />
                         <View />
                         <TouchableOpacity onPress={() => navigation.navigate('Search')}>
                             <Image source={{ uri: 'https://img.icons8.com/ios-filled/50/ffffff/search--v1.png' }} style={styles.icon} />

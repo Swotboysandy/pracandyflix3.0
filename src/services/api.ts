@@ -1,9 +1,11 @@
 import axios from 'axios';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export interface Movie {
     id: string;
     title: string;
     imageUrl: string;
+    originalImageUrl?: string;
     provider?: string;
 }
 
@@ -17,6 +19,64 @@ export interface Provider {
     name: string;
     url: string;
 }
+
+export interface HistoryItem extends Movie {
+    progress: number; // in seconds
+    duration: number; // in seconds
+    timestamp: number; // last watched time
+    provider: string; // 'Netflix' or 'Prime'
+}
+
+const HISTORY_KEY = 'watch_history';
+
+export const addToHistory = async (item: HistoryItem) => {
+    try {
+        const history = await getHistory();
+        // Remove existing entry for this movie if it exists
+        const filtered = history.filter(h => h.id !== item.id);
+        // Add new item to the beginning
+        const updated = [item, ...filtered];
+        // Limit history to 20 items
+        if (updated.length > 20) updated.pop();
+
+        await AsyncStorage.setItem(HISTORY_KEY, JSON.stringify(updated));
+    } catch (error) {
+        console.error('Error adding to history:', error);
+    }
+};
+
+export const getHistory = async (filterProvider?: string): Promise<HistoryItem[]> => {
+    try {
+        const json = await AsyncStorage.getItem(HISTORY_KEY);
+        let history: HistoryItem[] = json ? JSON.parse(json) : [];
+
+        if (filterProvider) {
+            history = history.filter(item => {
+                // Handle legacy items that might not have a provider (assume Netflix)
+                const itemProvider = item.provider || 'Netflix';
+                // Normalize provider names for comparison
+                const p1 = itemProvider.toLowerCase().includes('prime') ? 'Prime' : 'Netflix';
+                const p2 = filterProvider.toLowerCase().includes('prime') ? 'Prime' : 'Netflix';
+                return p1 === p2;
+            });
+        }
+
+        return history;
+    } catch (error) {
+        console.error('Error getting history:', error);
+        return [];
+    }
+};
+
+export const removeFromHistory = async (id: string) => {
+    try {
+        const history = await getHistory();
+        const updated = history.filter(h => h.id !== id);
+        await AsyncStorage.setItem(HISTORY_KEY, JSON.stringify(updated));
+    } catch (error) {
+        console.error('Error removing from history:', error);
+    }
+};
 
 const PROVIDERS_URL = 'https://raw.githubusercontent.com/Anshu78780/json/main/providers.json';
 const COOKIE_URL = 'https://raw.githubusercontent.com/Anshu78780/json/main/cookies.json';
@@ -57,6 +117,8 @@ export const fetchHomeData = async (): Promise<Section[]> => {
                 title: category.title,
                 movies: category.movies.map((item: any) => {
                     let imageUrl = item.imageUrl;
+                    const originalImageUrl = item.imageUrl; // Store original
+
                     // Upgrade resolution if possible
                     if (imageUrl) {
                         imageUrl = imageUrl.replace('/poster/h/', '/poster/v/');
@@ -67,6 +129,7 @@ export const fetchHomeData = async (): Promise<Section[]> => {
                         id: item.id,
                         title: item.title || item.id,
                         imageUrl: imageUrl,
+                        originalImageUrl: originalImageUrl,
                     };
                 }),
             }));
@@ -621,4 +684,3 @@ export const fetchPrimeHomeData = async (): Promise<Section[]> => {
         return [];
     }
 };
-
