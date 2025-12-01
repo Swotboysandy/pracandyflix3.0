@@ -31,7 +31,7 @@ const Search: React.FC<SearchProps> = ({ onClose, onMoviePress }) => {
     const [results, setResults] = useState<Movie[]>([]);
     const [loading, setLoading] = useState(false);
     const [debouncedQuery, setDebouncedQuery] = useState(query);
-    const [selectedPlatform, setSelectedPlatform] = useState<'netflix' | 'primevideo' | 'hotstar'>('netflix');
+    const [selectedPlatform, setSelectedPlatform] = useState<'Netflix' | 'Prime' | 'Hotstar'>('Netflix');
 
     // Debounce search
     useEffect(() => {
@@ -117,22 +117,22 @@ const Search: React.FC<SearchProps> = ({ onClose, onMoviePress }) => {
                 </View>
                 <View style={styles.toggleContainer}>
                     <TouchableOpacity
-                        style={[styles.toggleButton, selectedPlatform === 'netflix' && styles.toggleButtonActive]}
-                        onPress={() => setSelectedPlatform('netflix')}
+                        style={[styles.toggleButton, selectedPlatform === 'Netflix' && styles.toggleButtonActive]}
+                        onPress={() => setSelectedPlatform('Netflix')}
                     >
-                        <Text style={[styles.toggleText, selectedPlatform === 'netflix' && styles.toggleTextActive]}>Netflix</Text>
+                        <Text style={[styles.toggleText, selectedPlatform === 'Netflix' && styles.toggleTextActive]}>Netflix</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
-                        style={[styles.toggleButton, selectedPlatform === 'primevideo' && styles.toggleButtonActive]}
-                        onPress={() => setSelectedPlatform('primevideo')}
+                        style={[styles.toggleButton, selectedPlatform === 'Prime' && styles.toggleButtonActive]}
+                        onPress={() => setSelectedPlatform('Prime')}
                     >
-                        <Text style={[styles.toggleText, selectedPlatform === 'primevideo' && styles.toggleTextActive]}>Prime</Text>
+                        <Text style={[styles.toggleText, selectedPlatform === 'Prime' && styles.toggleTextActive]}>Prime</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
-                        style={[styles.toggleButton, selectedPlatform === 'hotstar' && styles.toggleButtonActive]}
-                        onPress={() => setSelectedPlatform('hotstar')}
+                        style={[styles.toggleButton, selectedPlatform === 'Hotstar' && styles.toggleButtonActive]}
+                        onPress={() => setSelectedPlatform('Hotstar')}
                     >
-                        <Text style={[styles.toggleText, selectedPlatform === 'hotstar' && styles.toggleTextActive]}>Hotstar</Text>
+                        <Text style={[styles.toggleText, selectedPlatform === 'Hotstar' && styles.toggleTextActive]}>Hotstar</Text>
                     </TouchableOpacity>
                 </View>
 

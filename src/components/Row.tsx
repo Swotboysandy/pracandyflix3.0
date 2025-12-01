@@ -8,10 +8,14 @@ interface RowProps {
     onMoviePress: (movie: Movie) => void;
 }
 
+import AnimatedText from './AnimatedText';
+
+// ... imports
+
 const Row: React.FC<RowProps> = ({ section, onMoviePress }) => {
     return (
         <View style={styles.container}>
-            <Text style={styles.title}>{section.title}</Text>
+            <AnimatedText style={styles.title}>{section.title}</AnimatedText>
             <FlatList
                 horizontal
                 data={section.movies}

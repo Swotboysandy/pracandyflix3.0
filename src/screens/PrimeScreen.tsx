@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import {
+    ScrollView,
     StatusBar,
     StyleSheet,
     View,
@@ -9,12 +10,11 @@ import {
     Text,
     Modal,
     TouchableWithoutFeedback,
-    FlatList,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
-import { fetchHomeData, Section, Movie } from '../services/api';
+import { fetchHomeData, fetchPrimeHomeData, Section, Movie } from '../services/api';
 import Row from '../components/Row';
 import MovieItem from '../components/MovieItem';
 import { RootStackParamList } from '../navigation/types';
@@ -23,15 +23,15 @@ import GradientBackground from '../components/GradientBackground';
 import FadeInView from '../components/FadeInView';
 import GlassHeader from '../components/GlassHeader';
 
-type HomeScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Home'>;
+type PrimeScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Prime'>;
 
-const HomeScreen = ({ route }: any) => {
-    const navigation = useNavigation<HomeScreenNavigationProp>();
+const PrimeScreen = () => {
+    const navigation = useNavigation<PrimeScreenNavigationProp>();
     const insets = useSafeAreaInsets();
     const [sections, setSections] = useState<Section[]>([]);
     const [loading, setLoading] = useState(true);
     const [heroMovie, setHeroMovie] = useState<Movie | null>(null);
-    const [selectedProvider] = useState<string>('Netflix');
+    const [selectedProvider] = useState<string>('Prime');
     const [isProviderModalVisible, setIsProviderModalVisible] = useState(false);
 
     useEffect(() => {
@@ -39,36 +39,18 @@ const HomeScreen = ({ route }: any) => {
     }, []);
 
     const loadData = async () => {
-        const data = await fetchHomeData();
-        let filteredData = data;
+        // Fetch Prime specific data
+        const data = await fetchPrimeHomeData();
 
-        if (route?.name === 'Movies') {
-            filteredData = data.filter(s =>
-                s.title.toLowerCase().includes('movie') ||
-                s.title.toLowerCase().includes('film') ||
-                s.title.toLowerCase().includes('hollywood') ||
-                s.title.toLowerCase().includes('bollywood')
-            );
-        } else if (route?.name === 'Series') {
-            filteredData = data.filter(s =>
-                s.title.toLowerCase().includes('series') ||
-                s.title.toLowerCase().includes('tv') ||
-                s.title.toLowerCase().includes('show') ||
-                s.title.toLowerCase().includes('web')
-            );
-        }
-
-        const displayData = filteredData.length > 0 ? filteredData : (route?.name === 'HomeTab' ? data : []);
-
-        const featuredSection = displayData.find(s => s.title === 'Featured');
+        const featuredSection = data.find(s => s.title === 'Featured');
         if (featuredSection && featuredSection.movies.length > 0) {
             setHeroMovie(featuredSection.movies[0]);
-            setSections(displayData.filter(s => s.title !== 'Featured'));
-        } else if (displayData.length > 0 && displayData[0].movies.length > 0) {
-            setHeroMovie(displayData[0].movies[0]);
-            setSections(displayData);
+            setSections(data.filter(s => s.title !== 'Featured'));
+        } else if (data.length > 0 && data[0].movies.length > 0) {
+            setHeroMovie(data[0].movies[0]);
+            setSections(data);
         } else {
-            setSections(displayData);
+            setSections(data);
             setHeroMovie(null);
         }
 
@@ -88,51 +70,59 @@ const HomeScreen = ({ route }: any) => {
 
     const switchProvider = (provider: 'Netflix' | 'Prime') => {
         setIsProviderModalVisible(false);
-        if (provider === 'Prime') {
-            navigation.navigate('Prime');
+        if (provider === 'Netflix') {
+            navigation.navigate('Main'); // Navigate back to Home (Netflix)
         }
+        // Already on Prime, do nothing
     };
 
     if (loading) {
         return (
             <View style={styles.loadingContainer}>
-                <ActivityIndicator size="large" color="#E50914" />
+                <ActivityIndicator size="large" color="#00A8E1" />
             </View>
         );
     }
 
     return (
-        <GradientBackground colors={['#000000', '#000000', '#000000']} style={{ flex: 1 }}>
+        <GradientBackground colors={['#002b5c', '#00152e', '#000000']} style={{ flex: 1 }}>
             <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
 
             <View style={{ flex: 1 }}>
-                <FlatList
-                    data={sections}
-                    keyExtractor={(item, index) => `${item.title}-${index}`}
-                    renderItem={({ item, index }) => (
-                        <FadeInView delay={index * 100} slideUp duration={600}>
-                            <Row
-                                section={item}
-                                onMoviePress={handleMoviePress}
-                            />
+                <ScrollView
+                    contentInsetAdjustmentBehavior="automatic"
+                    style={styles.scrollView}
+                    contentContainerStyle={[styles.scrollContent, { paddingTop: 80 + insets.top }]}
+                >
+                    {heroMovie && (
+                        <FadeInView duration={800} slideUp>
+                            <View style={styles.heroWrapper}>
+                                <MovieItem movie={heroMovie} onPress={handleMoviePress} isHero />
+                            </View>
                         </FadeInView>
                     )}
-                    ListHeaderComponent={
-                        heroMovie ? (
-                            <FadeInView duration={800} slideUp>
-                                <View style={styles.heroWrapper}>
-                                    <MovieItem movie={heroMovie} onPress={handleMoviePress} isHero />
-                                </View>
-                            </FadeInView>
-                        ) : null
-                    }
-                    contentContainerStyle={[styles.scrollContent, { paddingTop: 80 + insets.top }]}
-                    showsVerticalScrollIndicator={false}
-                    removeClippedSubviews={true}
-                    initialNumToRender={3}
-                    maxToRenderPerBatch={3}
-                    windowSize={5}
-                />
+
+                    <View style={styles.rowsContainer}>
+                        {sections.length === 0 ? (
+                            <View style={styles.noContentContainer}>
+                                <Text style={styles.noContentText}>No Prime content available.</Text>
+                                <Text style={styles.noContentSubText}>Try checking your internet connection or try again later.</Text>
+                                <TouchableOpacity style={styles.retryButton} onPress={loadData}>
+                                    <Text style={styles.retryButtonText}>Retry</Text>
+                                </TouchableOpacity>
+                            </View>
+                        ) : (
+                            sections.map((section, index) => (
+                                <FadeInView key={`${section.title}-${index}`} delay={index * 100} slideUp duration={600}>
+                                    <Row
+                                        section={section}
+                                        onMoviePress={handleMoviePress}
+                                    />
+                                </FadeInView>
+                            ))
+                        )}
+                    </View>
+                </ScrollView>
 
                 {/* Glass Header */}
                 <GlassHeader
@@ -144,7 +134,11 @@ const HomeScreen = ({ route }: any) => {
                         <TouchableOpacity onPress={toggleProviderModal}>
                             <LayoutGrid color="white" size={24} />
                         </TouchableOpacity>
-                        <View />
+                        <Image
+                            source={{ uri: 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/11/Amazon_Prime_Video_logo.svg/2560px-Amazon_Prime_Video_logo.svg.png' }}
+                            style={styles.logo}
+                            resizeMode="contain"
+                        />
                         <TouchableOpacity onPress={() => navigation.navigate('Search')}>
                             <Image source={{ uri: 'https://img.icons8.com/ios-filled/50/ffffff/search--v1.png' }} style={styles.icon} />
                         </TouchableOpacity>
@@ -166,18 +160,18 @@ const HomeScreen = ({ route }: any) => {
                                 <Text style={styles.modalTitle}>Select Provider</Text>
 
                                 <TouchableOpacity
-                                    style={[styles.providerOption, styles.activeProvider]}
+                                    style={styles.providerOption}
                                     onPress={() => switchProvider('Netflix')}
                                 >
-                                    <Text style={[styles.providerText, styles.activeProviderText]}>Netflix</Text>
-                                    <Text style={styles.checkmark}>✓</Text>
+                                    <Text style={styles.providerText}>Netflix</Text>
                                 </TouchableOpacity>
 
                                 <TouchableOpacity
-                                    style={styles.providerOption}
+                                    style={[styles.providerOption, styles.activeProvider]}
                                     onPress={() => switchProvider('Prime')}
                                 >
-                                    <Text style={styles.providerText}>Prime Video</Text>
+                                    <Text style={[styles.providerText, styles.activeProviderText]}>Prime Video</Text>
+                                    <Text style={styles.checkmark}>✓</Text>
                                 </TouchableOpacity>
                             </View>
                         </TouchableWithoutFeedback>
@@ -207,6 +201,10 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
         alignItems: 'center',
         paddingHorizontal: 20,
+    },
+    logo: {
+        width: 100,
+        height: 30,
     },
     icon: {
         width: 24,
@@ -244,6 +242,7 @@ const styles = StyleSheet.create({
         fontWeight: 'bold',
         marginBottom: 20,
         textAlign: 'center',
+        fontFamily: 'sans-serif',
     },
     providerOption: {
         flexDirection: 'row',
@@ -263,15 +262,48 @@ const styles = StyleSheet.create({
     providerText: {
         color: '#aaa',
         fontSize: 16,
+        fontFamily: 'sans-serif',
     },
     activeProviderText: {
         color: 'white',
         fontWeight: 'bold',
+        fontFamily: 'sans-serif',
     },
     checkmark: {
-        color: '#E50914',
+        color: '#00A8E1',
         fontWeight: 'bold',
+    },
+    noContentContainer: {
+        padding: 40,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    noContentText: {
+        color: 'white',
+        fontSize: 18,
+        fontWeight: 'bold',
+        marginBottom: 10,
+        fontFamily: 'sans-serif',
+    },
+    noContentSubText: {
+        color: '#999',
+        fontSize: 14,
+        textAlign: 'center',
+        marginBottom: 20,
+        fontFamily: 'sans-serif',
+    },
+    retryButton: {
+        backgroundColor: '#00A8E1',
+        paddingHorizontal: 20,
+        paddingVertical: 10,
+        borderRadius: 5,
+    },
+    retryButtonText: {
+        color: 'white',
+        fontWeight: 'bold',
+        fontSize: 16,
+        fontFamily: 'sans-serif',
     },
 });
 
-export default HomeScreen;
+export default PrimeScreen;

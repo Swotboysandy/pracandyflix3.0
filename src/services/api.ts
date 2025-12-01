@@ -55,11 +55,20 @@ export const fetchHomeData = async (): Promise<Section[]> => {
         if (response.data && response.data.success && response.data.data) {
             const sections: Section[] = response.data.data.map((category: any) => ({
                 title: category.title,
-                movies: category.movies.map((item: any) => ({
-                    id: item.id,
-                    title: item.title || item.id,
-                    imageUrl: item.imageUrl,
-                })),
+                movies: category.movies.map((item: any) => {
+                    let imageUrl = item.imageUrl;
+                    // Upgrade resolution if possible
+                    if (imageUrl) {
+                        imageUrl = imageUrl.replace('/poster/h/', '/poster/v/');
+                        imageUrl = imageUrl.replace('/poster/m/', '/poster/v/');
+                        imageUrl = imageUrl.replace('/341/', '/v/');
+                    }
+                    return {
+                        id: item.id,
+                        title: item.title || item.id,
+                        imageUrl: imageUrl,
+                    };
+                }),
             }));
 
             return sections;
@@ -555,11 +564,11 @@ export const searchMovies = async (query: string, providerId: string = 'Netflix'
             return response.data.searchResult.map((item: any) => {
                 let imageUrl: string;
                 if (providerId === 'Hotstar') {
-                    imageUrl = `https://imgcdn.media/hs/341/${item.id}.jpg`;
+                    imageUrl = `https://imgcdn.media/hs/v/${item.id}.jpg`;
                 } else if (providerId === 'Prime') {
-                    imageUrl = `https://imgcdn.kim/pv/341/${item.id}.jpg`;
+                    imageUrl = `https://imgcdn.kim/pv/v/${item.id}.jpg`;
                 } else {
-                    imageUrl = `https://img.nfmirrorcdn.top/poster/h/${item.id}.jpg`;
+                    imageUrl = `https://img.nfmirrorcdn.top/poster/v/${item.id}.jpg`;
                 }
 
                 return {
@@ -577,3 +586,39 @@ export const searchMovies = async (query: string, providerId: string = 'Netflix'
         return [];
     }
 };
+
+export const fetchPrimeHomeData = async (): Promise<Section[]> => {
+    try {
+        const queries = [
+            'Top Movies', 'Top Rated', 'Recently Added', 'English Movies',
+            'Latest Movies', 'Top 10 India', 'Romance', 'Romantic Comedy',
+            'Young Adult', 'Horror', 'Action', 'Thriller', 'Drama', 'Sci-Fi',
+            'Adventure', 'Fantasy', 'Crime', 'Mystery', 'Documentary', 'Kids',
+            'Hindi Movies', 'Telugu Movies', 'Tamil Movies', 'Malayalam Movies'
+        ];
+
+        // Fetch sequentially or with limited concurrency if needed, but for now let's just make sure one failure doesn't kill all
+        const results = await Promise.all(
+            queries.map(async (q) => {
+                try {
+                    const movies = await searchMovies(q, 'Prime');
+                    return {
+                        title: `${q} Movies`,
+                        movies: movies
+                    };
+                } catch (e) {
+                    console.error(`Failed to fetch Prime category: ${q}`, e);
+                    return null;
+                }
+            })
+        );
+
+        return results
+            .filter((section): section is Section => section !== null && section.movies.length >= 4);
+
+    } catch (error) {
+        console.error('Error fetching Prime home data:', error);
+        return [];
+    }
+};
+
