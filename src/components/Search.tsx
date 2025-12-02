@@ -20,18 +20,19 @@ import { searchMovies, Movie } from '../services/api';
 interface SearchProps {
     onClose?: () => void;
     onMoviePress: (movie: Movie) => void;
+    initialProvider?: 'Netflix' | 'Prime' | 'Hotstar';
 }
 
 const { width } = Dimensions.get('window');
 const numColumns = 3;
 const itemWidth = (width - 40) / numColumns; // 20 padding on each side
 
-const Search: React.FC<SearchProps> = ({ onClose, onMoviePress }) => {
+const Search: React.FC<SearchProps> = ({ onClose, onMoviePress, initialProvider = 'Netflix' }) => {
     const [query, setQuery] = useState('');
     const [results, setResults] = useState<Movie[]>([]);
     const [loading, setLoading] = useState(false);
     const [debouncedQuery, setDebouncedQuery] = useState(query);
-    const [selectedPlatform, setSelectedPlatform] = useState<'Netflix' | 'Prime' | 'Hotstar'>('Netflix');
+    const [selectedPlatform, setSelectedPlatform] = useState<'Netflix' | 'Prime' | 'Hotstar'>(initialProvider);
 
     // Debounce search
     useEffect(() => {

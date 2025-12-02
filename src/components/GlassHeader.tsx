@@ -18,7 +18,7 @@ const GlassHeader: React.FC<GlassHeaderProps> = ({
 }) => {
     return (
         <View style={[styles.container, style]}>
-            <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.7)' }]} />
+            <View style={[StyleSheet.absoluteFill, { backgroundColor: 'transparent' }]} />
             {/* <BlurView
                 style={StyleSheet.absoluteFill}
                 blurType={tint as any}

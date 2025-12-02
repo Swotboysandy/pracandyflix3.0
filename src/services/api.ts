@@ -1,9 +1,11 @@
 import axios from 'axios';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export interface Movie {
     id: string;
     title: string;
     imageUrl: string;
+    originalImageUrl?: string;
     provider?: string;
 }
 
@@ -17,6 +19,64 @@ export interface Provider {
     name: string;
     url: string;
 }
+
+export interface HistoryItem extends Movie {
+    progress: number; // in seconds
+    duration: number; // in seconds
+    timestamp: number; // last watched time
+    provider: string; // 'Netflix' or 'Prime'
+}
+
+const HISTORY_KEY = 'watch_history';
+
+export const addToHistory = async (item: HistoryItem) => {
+    try {
+        const history = await getHistory();
+        // Remove existing entry for this movie if it exists
+        const filtered = history.filter(h => h.id !== item.id);
+        // Add new item to the beginning
+        const updated = [item, ...filtered];
+        // Limit history to 20 items
+        if (updated.length > 20) updated.pop();
+
+        await AsyncStorage.setItem(HISTORY_KEY, JSON.stringify(updated));
+    } catch (error) {
+        console.error('Error adding to history:', error);
+    }
+};
+
+export const getHistory = async (filterProvider?: string): Promise<HistoryItem[]> => {
+    try {
+        const json = await AsyncStorage.getItem(HISTORY_KEY);
+        let history: HistoryItem[] = json ? JSON.parse(json) : [];
+
+        if (filterProvider) {
+            history = history.filter(item => {
+                // Handle legacy items that might not have a provider (assume Netflix)
+                const itemProvider = item.provider || 'Netflix';
+                // Normalize provider names for comparison
+                const p1 = itemProvider.toLowerCase().includes('prime') ? 'Prime' : 'Netflix';
+                const p2 = filterProvider.toLowerCase().includes('prime') ? 'Prime' : 'Netflix';
+                return p1 === p2;
+            });
+        }
+
+        return history;
+    } catch (error) {
+        console.error('Error getting history:', error);
+        return [];
+    }
+};
+
+export const removeFromHistory = async (id: string) => {
+    try {
+        const history = await getHistory();
+        const updated = history.filter(h => h.id !== id);
+        await AsyncStorage.setItem(HISTORY_KEY, JSON.stringify(updated));
+    } catch (error) {
+        console.error('Error removing from history:', error);
+    }
+};
 
 const PROVIDERS_URL = 'https://raw.githubusercontent.com/Anshu78780/json/main/providers.json';
 const COOKIE_URL = 'https://raw.githubusercontent.com/Anshu78780/json/main/cookies.json';
@@ -52,11 +112,18 @@ export const fetchHomeData = async (): Promise<Section[]> => {
             },
         });
 
-        if (response.data && response.data.success && response.data.data) {
+        console.log('Home Data Response Status:', response.status);
+        console.log('Home Data Response Keys:', Object.keys(response.data));
+        if (response.data.success !== undefined) console.log('Success flag:', response.data.success);
+        if (response.data.data) console.log('Data length:', response.data.data.length);
+
+        if (response.data && response.data.success && response.data.data && response.data.data.length > 0) {
             const sections: Section[] = response.data.data.map((category: any) => ({
                 title: category.title,
                 movies: category.movies.map((item: any) => {
                     let imageUrl = item.imageUrl;
+                    const originalImageUrl = item.imageUrl; // Store original
+
                     // Upgrade resolution if possible
                     if (imageUrl) {
                         imageUrl = imageUrl.replace('/poster/h/', '/poster/v/');
@@ -67,6 +134,7 @@ export const fetchHomeData = async (): Promise<Section[]> => {
                         id: item.id,
                         title: item.title || item.id,
                         imageUrl: imageUrl,
+                        originalImageUrl: originalImageUrl,
                     };
                 }),
             }));
@@ -74,15 +142,96 @@ export const fetchHomeData = async (): Promise<Section[]> => {
             return sections;
         }
 
-        return [];
+        console.log('fetchHomeData: Primary API returned empty data, using fallback.');
+        throw new Error('Empty data from primary API');
+
     } catch (error) {
-        console.warn('Error fetching data:', error);
-        return [];
+        console.warn('Error fetching data, using fallback:', error);
+
+        // Fallback: Fetch categories manually using searchMovies
+        const queries = [
+            { q: 'Trending', title: 'Trending Now' },
+            { q: 'Series', title: 'TV Series' },
+            { q: 'Action', title: 'Action Movies' },
+            { q: 'Comedy', title: 'Comedy Movies' },
+            { q: 'Romance', title: 'Romance Movies' },
+            { q: 'Horror', title: 'Horror Movies' },
+            { q: 'Sci-Fi', title: 'Sci-Fi & Fantasy' },
+            { q: 'Suspense', title: 'Thriller & Suspense' },
+            { q: 'Drama Movies', title: 'Drama Movies' },
+            { q: 'Mystery', title: 'Mystery' },
+            { q: 'Crime', title: 'Crime' },
+            { q: 'Anime', title: 'Anime' },
+            { q: 'Kids', title: 'Kids & Family' },
+            { q: 'Adventure', title: 'Adventure' },
+        ];
+
+        const BATCH_SIZE = 3;
+        const results: (Section | null)[] = [];
+
+        for (let i = 0; i < queries.length; i += BATCH_SIZE) {
+            const batch = queries.slice(i, i + BATCH_SIZE);
+            const batchResults = await Promise.all(
+                batch.map(async (item) => {
+                    try {
+                        const movies = await searchMovies(item.q, 'Netflix');
+                        return {
+                            title: item.title,
+                            movies: movies
+                        };
+                    } catch (e) {
+                        console.error(`Failed to fetch Netflix category: ${item.q}`, e);
+                        return null;
+                    }
+                })
+            );
+            results.push(...batchResults);
+
+            if (i + BATCH_SIZE < queries.length) {
+                await new Promise(resolve => setTimeout(() => resolve(null), 500));
+            }
+        }
+
+        const validSections = results.filter((section): section is Section => section !== null && section.movies.length > 0);
+
+        // Manually construct "Top 10 Today" from the best of other sections
+        const top10Movies: any[] = [];
+        const seenIds = new Set();
+
+        // 1. Take top 2 from Trending
+        const trending = validSections.find(s => s.title === 'Trending Now');
+        if (trending) {
+            for (const m of trending.movies.slice(0, 2)) {
+                if (!seenIds.has(m.id)) {
+                    top10Movies.push(m);
+                    seenIds.add(m.id);
+                }
+            }
+        }
+
+        // 2. Take top 1 from others until we have 10
+        for (const section of validSections) {
+            if (section.title === 'Trending Now') continue;
+            for (const m of section.movies) {
+                if (!seenIds.has(m.id)) {
+                    top10Movies.push(m);
+                    seenIds.add(m.id);
+                    break;
+                }
+            }
+            if (top10Movies.length >= 10) break;
+        }
+
+        if (top10Movies.length > 0) {
+            validSections.unshift({
+                title: 'Top 10 Today',
+                movies: top10Movies
+            });
+        }
+
+        return validSections;
     }
 };
-
-
-
 export interface Episode {
     complate: string;
     id: string;
@@ -140,7 +289,7 @@ export interface MovieDetails {
     provider?: string;
 }
 
-export const fetchMovieDetails = async (id: string, providerId: string = 'Netflix', season?: string): Promise<MovieDetails | null> => {
+export const fetchMovieDetails = async (id: string, providerId: string = 'Netflix', season?: string, title?: string): Promise<MovieDetails | null> => {
     try {
         // 1. Fetch Cookies
         const cookieResponse = await axios.get(COOKIE_URL);
@@ -216,6 +365,58 @@ export const fetchMovieDetails = async (id: string, providerId: string = 'Netfli
                         }
                     } else {
                         console.log(`fetchMovieDetails: Season ${season} not found in season list`);
+                    }
+                }
+
+                // 4. Fallback for Related Content (Suggest)
+                const searchTitle = data.title || title;
+                console.log(`fetchMovieDetails: Checking related content. suggest length: ${data.suggest?.length}, searchTitle: ${searchTitle}`);
+
+                if ((!data.suggest || data.suggest.length === 0) && searchTitle) {
+                    try {
+                        console.log(`fetchMovieDetails: No related content found, searching for "${searchTitle}"`);
+                        // Search for the title to get related items
+                        const searchResults = await searchMovies(searchTitle, providerId);
+                        console.log(`fetchMovieDetails: Search results for "${searchTitle}": ${searchResults.length} items`);
+
+                        // Filter out the current movie and map to SuggestedMovie format
+                        data.suggest = searchResults
+                            .filter(m => m.id !== id)
+                            .map(m => ({
+                                id: m.id,
+                                t: m.title,
+                                d: '',
+                                ua: '',
+                                y: '',
+                                m: ''
+                            }));
+
+                        console.log(`fetchMovieDetails: Mapped ${data.suggest.length} related items`);
+
+                        // If still empty (e.g. unique title), try searching for genre if available
+                        if (data.suggest.length === 0 && data.genre) {
+                            const firstGenre = data.genre.split(',')[0].trim();
+                            if (firstGenre) {
+                                console.log(`fetchMovieDetails: Still no related content, searching for genre "${firstGenre}"`);
+                                const genreResults = await searchMovies(firstGenre, providerId);
+                                console.log(`fetchMovieDetails: Genre search results for "${firstGenre}": ${genreResults.length} items`);
+
+                                data.suggest = genreResults
+                                    .filter(m => m.id !== id)
+                                    .map(m => ({
+                                        id: m.id,
+                                        t: m.title,
+                                        d: '',
+                                        ua: '',
+                                        y: '',
+                                        m: ''
+                                    }));
+                            }
+                        }
+
+                        console.log(`fetchMovieDetails: Populated ${data.suggest.length} related items via fallback`);
+                    } catch (err) {
+                        console.warn('fetchMovieDetails: Failed to populate fallback related content', err);
                     }
                 }
 
@@ -528,7 +729,7 @@ const getConsumetStreamUrl = async (
     }
 };
 
-export const searchMovies = async (query: string, providerId: string = 'Netflix'): Promise<Movie[]> => {
+export async function searchMovies(query: string, providerId: string = 'Netflix'): Promise<Movie[]> {
     try {
         // 1. Fetch Cookies
         const cookieResponse = await axios.get(COOKIE_URL);
@@ -585,40 +786,64 @@ export const searchMovies = async (query: string, providerId: string = 'Netflix'
         console.error('Error searching movies:', error);
         return [];
     }
-};
+}
 
 export const fetchPrimeHomeData = async (): Promise<Section[]> => {
     try {
         const queries = [
-            'Top Movies', 'Top Rated', 'Recently Added', 'English Movies',
-            'Latest Movies', 'Top 10 India', 'Romance', 'Romantic Comedy',
-            'Young Adult', 'Horror', 'Action', 'Thriller', 'Drama', 'Sci-Fi',
-            'Adventure', 'Fantasy', 'Crime', 'Mystery', 'Documentary', 'Kids',
-            'Hindi Movies', 'Telugu Movies', 'Tamil Movies', 'Malayalam Movies'
+            { q: 'Action', title: 'Action', type: 'movie' },
+            { q: 'Comedy', title: 'Comedy', type: 'movie' },
+            { q: 'Drama Movies', title: 'Drama Movies', type: 'movie' },
+            { q: 'Best Drama', title: 'Best Drama', type: 'movie' },
+            { q: 'Thriller', title: 'Thriller', type: 'movie' },
+            { q: 'Horror', title: 'Horror', type: 'movie' },
+            { q: 'Romance', title: 'Romance', type: 'movie' },
+            { q: 'Sci-Fi', title: 'Sci-Fi', type: 'movie' },
+            { q: 'Kids', title: 'Kids & Family', type: 'mixed' },
+            { q: 'Top Movies', title: 'Top Movies', type: 'movie' },
+            { q: 'Top Series', title: 'Top Series', type: 'series' },
+            { q: 'Amazon Originals', title: 'Amazon Originals', type: 'series' },
+            { q: 'Recently Added', title: 'Recently Added', type: 'mixed' },
+            { q: 'English Movies', title: 'English Movies', type: 'movie' },
+            { q: 'Hindi Movies', title: 'Hindi Movies', type: 'movie' },
+            { q: 'Telugu Movies', title: 'Telugu Movies', type: 'movie' },
+            { q: 'Tamil Movies', title: 'Tamil Movies', type: 'movie' },
+            { q: 'Malayalam Movies', title: 'Malayalam Movies', type: 'movie' },
         ];
 
-        // Fetch sequentially or with limited concurrency if needed, but for now let's just make sure one failure doesn't kill all
-        const results = await Promise.all(
-            queries.map(async (q) => {
-                try {
-                    const movies = await searchMovies(q, 'Prime');
-                    return {
-                        title: `${q} Movies`,
-                        movies: movies
-                    };
-                } catch (e) {
-                    console.error(`Failed to fetch Prime category: ${q}`, e);
-                    return null;
-                }
-            })
-        );
+        // Fetch in batches to avoid rate limiting
+        const BATCH_SIZE = 2;
+        const results: (Section | null)[] = [];
+
+        for (let i = 0; i < queries.length; i += BATCH_SIZE) {
+            const batch = queries.slice(i, i + BATCH_SIZE);
+            const batchResults = await Promise.all(
+                batch.map(async (item) => {
+                    try {
+                        const movies = await searchMovies(item.q, 'Prime');
+                        return {
+                            title: item.title,
+                            movies: movies
+                        };
+                    } catch (e) {
+                        console.error(`Failed to fetch Prime category: ${item.q}`, e);
+                        return null;
+                    }
+                })
+            );
+            results.push(...batchResults);
+
+            // Delay between batches
+            if (i + BATCH_SIZE < queries.length) {
+                await new Promise(resolve => setTimeout(() => resolve(null), 1000));
+            }
+        }
 
         return results
-            .filter((section): section is Section => section !== null && section.movies.length >= 4);
+            .filter((section): section is Section => section !== null && section.movies.length >= 1);
 
     } catch (error) {
         console.error('Error fetching Prime home data:', error);
         return [];
     }
 };
-

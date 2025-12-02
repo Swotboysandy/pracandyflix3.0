@@ -5,7 +5,7 @@ import VideoCore from './VideoCore';
 import ControlsOverlay from './ControlsOverlay';
 import SettingsModal from './SettingsModal';
 import { enterFullscreen, exitFullscreen } from './FullscreenHandler';
-import { StreamSource, StreamTrack } from '../../services/api';
+import { StreamSource, StreamTrack, addToHistory } from '../../services/api';
 import PlayerGestures from './PlayerGestures';
 
 interface VideoPlayerProps {
@@ -17,9 +17,13 @@ interface VideoPlayerProps {
     tracks?: StreamTrack[];
     onClose: () => void;
     onNextEpisode?: () => void;
+    movieId?: string;
+    poster?: string;
+    provider?: string;
 }
 
-const VideoPlayer: React.FC<VideoPlayerProps> = ({ videoUrl, title, cookies, referer, sources, tracks, onClose, onNextEpisode }) => {
+const VideoPlayer: React.FC<VideoPlayerProps> = (props) => {
+    const { videoUrl, title, cookies, referer, sources, tracks, onClose, onNextEpisode } = props;
     const videoRef = useRef<any>(null);
 
     // Player State
@@ -198,6 +202,20 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ videoUrl, title, cookies, ref
         const now = Date.now();
         if (now - lastSaveTimeRef.current > 5000) {
             saveProgress(time);
+
+            // Save to global history
+            if (props.movieId && props.poster) {
+                addToHistory({
+                    id: props.movieId,
+                    title: title,
+                    imageUrl: props.poster,
+                    progress: time,
+                    duration: duration,
+                    timestamp: now,
+                    provider: props.provider || 'Netflix'
+                });
+            }
+
             lastSaveTimeRef.current = now;
         }
     };
@@ -300,12 +318,23 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ videoUrl, title, cookies, ref
         setBrightness(prev => Math.max(0, Math.min(1, prev + delta)));
     }, []);
 
-    const textTracks = localTracks?.filter(t => t.kind !== 'audio').map(track => ({
-        title: track.label || 'Unknown',
-        language: (track.label || 'en').substring(0, 2).toLowerCase(),
-        type: track.kind === 'captions' ? 'application/x-subrip' : 'text/vtt',
-        uri: track.file
-    }));
+    const textTracks = localTracks?.filter(t => t.kind !== 'audio').map(track => {
+        let type = 'text/vtt'; // Default
+        if (track.file.endsWith('.srt')) {
+            type = 'application/x-subrip';
+        } else if (track.file.endsWith('.ttml')) {
+            type = 'application/ttml+xml';
+        } else if (track.kind === 'captions') {
+            type = 'application/x-subrip'; // Fallback for captions if no extension match
+        }
+
+        return {
+            title: track.label || 'Unknown',
+            language: (track.label || 'en').substring(0, 2).toLowerCase(),
+            type: type,
+            uri: track.file
+        };
+    });
 
     const selectedTextTrackProp = selectedTextTrack ? {
         type: 'title',

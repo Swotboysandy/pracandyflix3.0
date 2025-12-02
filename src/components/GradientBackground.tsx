@@ -1,25 +1,28 @@
-
 import React from 'react';
 import { StyleSheet, View, ViewStyle } from 'react-native';
 import Svg, { Defs, Rect, LinearGradient, Stop } from 'react-native-svg';
 
 interface GradientBackgroundProps {
-    colors: string[];
+    colors?: string[];
     style?: ViewStyle;
     children?: React.ReactNode;
 }
 
 const GradientBackground: React.FC<GradientBackgroundProps> = ({ colors, style, children }) => {
+    // Default to pure black as requested by user (removed red/brown tint)
+    const defaultColors = ['#000000', '#000000', '#000000'];
+    const gradientColors = colors || defaultColors;
+
     return (
         <View style={[styles.container, style]}>
             <View style={StyleSheet.absoluteFill}>
                 <Svg height="100%" width="100%">
                     <Defs>
                         <LinearGradient id="grad" x1="0" y1="0" x2="0" y2="1">
-                            {colors.map((color, index) => (
+                            {gradientColors.map((color, index) => (
                                 <Stop
                                     key={index}
-                                    offset={`${(index / (colors.length - 1)) * 100}%`}
+                                    offset={`${(index / (gradientColors.length - 1)) * 100}%`}
                                     stopColor={color}
                                     stopOpacity="1"
                                 />
@@ -37,7 +40,7 @@ const GradientBackground: React.FC<GradientBackgroundProps> = ({ colors, style, 
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: 'black', // Fallback
+        backgroundColor: '#000000',
     },
 });
 

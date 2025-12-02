@@ -1,8 +1,9 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { Home, Film, Tv, Search } from 'lucide-react-native';
+import { Home, Film, Tv, LayoutGrid } from 'lucide-react-native';
 import HomeScreen from '../screens/HomeScreen';
-import SearchScreen from '../screens/SearchScreen';
+import ProviderScreen from '../screens/ProviderScreen';
+import HomeWrapper from '../screens/HomeWrapper';
 
 const Tab = createBottomTabNavigator();
 
@@ -14,10 +15,10 @@ const BottomTabNavigator = () => {
                 tabBarStyle: {
                     backgroundColor: '#000',
                     borderTopColor: '#333',
-                    paddingBottom: 5,
-                    paddingTop: 5,
-                    height: 60, // Keep height but ensure content fits
-                    elevation: 0, // Remove shadow on Android to avoid artifacts
+                    paddingBottom: 20,
+                    paddingTop: 10,
+                    height: 80,
+                    elevation: 0,
                 },
                 tabBarActiveTintColor: '#E50914',
                 tabBarInactiveTintColor: '#999',
@@ -33,7 +34,7 @@ const BottomTabNavigator = () => {
         >
             <Tab.Screen
                 name="HomeTab"
-                component={HomeScreen}
+                component={HomeWrapper}
                 options={{
                     tabBarLabel: 'Home',
                     tabBarIcon: ({ color, size }) => <Home color={color} size={size} />,
@@ -56,11 +57,11 @@ const BottomTabNavigator = () => {
                 }}
             />
             <Tab.Screen
-                name="SearchTab"
-                component={SearchScreen}
+                name="ProviderTab"
+                component={ProviderScreen}
                 options={{
-                    tabBarLabel: 'Search',
-                    tabBarIcon: ({ color, size }) => <Search color={color} size={size} />,
+                    tabBarLabel: 'Provider',
+                    tabBarIcon: ({ color, size }) => <LayoutGrid color={color} size={size} />,
                 }}
             />
         </Tab.Navigator>
