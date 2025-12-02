@@ -481,7 +481,7 @@ export const getStreamUrl = async (
         }
         const cookies = baseCookie + `ott=${ott}; hd=on;`;
 
-        const streamBaseUrl = 'https://net51.cc';
+        const streamBaseUrl = 'https://net20.cc';
 
         // For Hotstar, use simplified approach without play.php
         if (providerId === 'Hotstar') {
@@ -583,13 +583,14 @@ export const getStreamUrl = async (
         // 2. POST to play.php to get the 'h' parameter
         const baseUrl = 'https://net20.cc';
         const playUrl = `${baseUrl}/play.php`;
-        const formData = new FormData();
-        formData.append('id', id);
 
-        const playResponse = await axios.post(playUrl, formData, {
+        const params = new URLSearchParams();
+        params.append('id', id);
+
+        const playResponse = await axios.post(playUrl, params.toString(), {
             headers: {
                 'Cookie': cookies,
-                'Content-Type': 'multipart/form-data',
+                'Content-Type': 'application/x-www-form-urlencoded',
             },
         });
 
@@ -609,8 +610,7 @@ export const getStreamUrl = async (
         const playlistResponse = await axios.get(playlistUrl, {
             headers: {
                 'Cookie': cookies,
-                'Referer': 'https://net51.cc/',
-                'Origin': 'https://net51.cc',
+                'Referer': 'https://net20.cc/',
             },
         });
 
@@ -619,22 +619,23 @@ export const getStreamUrl = async (
         const data = playlistResponse.data?.[0];
 
         if (data?.sources && data.sources.length > 0) {
-            let streamUrl = data.sources[0].file;
+            // Convert all relative paths to absolute URLs
+            const absoluteSources = data.sources.map((source: any) => ({
+                ...source,
+                file: source.file.startsWith('http') ? source.file : streamBaseUrl + source.file
+            }));
 
-            // If it's a relative path, prepend the stream base URL
-            if (!streamUrl.startsWith('http')) {
-                streamUrl = streamBaseUrl + streamUrl;
-            }
+            let streamUrl = absoluteSources[0].file;
 
             console.log('Final stream URL:', streamUrl);
             console.log('Using cookies:', cookies);
 
             return {
                 url: streamUrl,
-                sources: data.sources,
+                sources: absoluteSources,
                 tracks: data.tracks,
                 cookies: cookies,
-                referer: 'https://net51.cc/',
+                referer: 'https://net20.cc/',
             };
         }
 

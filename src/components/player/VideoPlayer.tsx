@@ -24,6 +24,14 @@ interface VideoPlayerProps {
 
 const VideoPlayer: React.FC<VideoPlayerProps> = (props) => {
     const { videoUrl, title, cookies, referer, sources, tracks, onClose, onNextEpisode } = props;
+
+    console.log('VideoPlayer mounted with:', {
+        videoUrl,
+        referer,
+        sourcesCount: sources?.length,
+        firstSource: sources?.[0]
+    });
+
     const videoRef = useRef<any>(null);
 
     // Player State
@@ -366,7 +374,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = (props) => {
                 onProgress={handleProgress}
                 onEnd={onClose}
                 onError={(e: any) => {
-                    console.log('Video Error:', e);
+                    console.log('Video Error:', JSON.stringify(e, null, 2));
                     setLoading(false); // Ensure loading is cleared on error
                 }}
                 onBuffer={(e: any) => setLoading(e.isBuffering)}
