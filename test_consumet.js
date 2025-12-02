@@ -1,10 +1,10 @@
 const axios = require('axios');
 
-const CONSUMET_URL = 'https://api.consumet.org';
+const CONSUMET_URL = 'https://consumet.zendax.tech';
 
 const testConsumet = async () => {
     try {
-        const query = 'Inception';
+        const query = 'Family man';
         console.log(`Searching for: ${query}`);
         
         const searchUrl = `${CONSUMET_URL}/movies/flixhq/${encodeURIComponent(query)}`;

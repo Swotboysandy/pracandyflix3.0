@@ -83,32 +83,24 @@ const testNetflix = async () => {
             if (mediaPlaylistLine) {
                 console.log('Found Media Playlist URL:', mediaPlaylistLine);
                 
-                const domainsToTry = [
-                    'https://s24.nm-cdn3.top', // From audio track
-                    'https://s21.nm-cdn3.top', // Guessing cdn3
-                    'https://s21.nfmirrorcdn.top', // From image CDN
-                    'https://net20.cc' // Just in case
-                ];
-
-                for (const domain of domainsToTry) {
-                    const newMediaPlaylistUrl = mediaPlaylistLine.replace('https://s21.nm-cdn4.top', domain);
-                    console.log(`Trying domain: ${domain} -> ${newMediaPlaylistUrl}`);
-                    
-                    try {
-                        const mediaRes = await axios.get(newMediaPlaylistUrl, {
-                            headers: {
-                                'Cookie': cookies,
-                                'Referer': 'https://net20.cc/',
-                            },
-                        });
-                        console.log(`SUCCESS with ${domain}! Status:`, mediaRes.status);
-                        console.log('--- MEDIA PLAYLIST CONTENT START ---');
-                        console.log(mediaRes.data);
-                        console.log('--- MEDIA PLAYLIST CONTENT END ---');
-                        break; // Found a working one!
-                    } catch (e) {
-                        console.log(`Failed with ${domain}: ${e.message}`);
-                    }
+                // Try fetching the ORIGINAL URL first
+                console.log(`Attempting to fetch ORIGINAL URL: ${mediaPlaylistLine}`);
+                try {
+                    const mediaRes = await axios.get(mediaPlaylistLine, {
+                        headers: {
+                            'Cookie': cookies,
+                            'Referer': 'https://net20.cc/',
+                        },
+                        timeout: 5000
+                    });
+                    console.log(`SUCCESS! Original URL is working. Status:`, mediaRes.status);
+                    console.log('--- MEDIA PLAYLIST CONTENT START ---');
+                    console.log(mediaRes.data);
+                    console.log('--- MEDIA PLAYLIST CONTENT END ---');
+                } catch (e) {
+                    console.log(`Failed to fetch original URL: ${e.message}`);
+                    if (e.code === 'ENOTFOUND') console.log('DNS Error: Domain not found');
+                    if (e.code === 'ETIMEDOUT') console.log('Timeout: Server not responding');
                 }
             } else {
                 console.log('No absolute Media Playlist URL found in Master Playlist');
