@@ -27,10 +27,11 @@ const VideoCore = React.memo(forwardRef<VideoRef, VideoCoreProps>(({ videoUrl, c
         type: 'm3u8',
         headers: {
             'Cookie': cookies,
-            'Referer': referer || 'https://net51.cc/',
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+            'Referer': referer || 'https://net20.cc/',
         },
     }), [videoUrl, cookies, referer]);
+
+    console.log('VideoCore source:', JSON.stringify(source, null, 2));
 
     return (
         <Video
