@@ -21,11 +21,12 @@ interface DetailsPageProps {
     onClose: () => void;
     onMoviePress: (movie: Movie) => void;
     providerId?: string;
+    title?: string;
 }
 
 const { width } = Dimensions.get('window');
 
-const DetailsPage: React.FC<DetailsPageProps> = ({ movieId, onClose, onMoviePress, providerId = 'Netflix' }) => {
+const DetailsPage: React.FC<DetailsPageProps> = ({ movieId, onClose, onMoviePress, providerId = 'Netflix', title }) => {
     const [details, setDetails] = useState<MovieDetails | null>(null);
     const [loading, setLoading] = useState(true);
     const [selectedSeason, setSelectedSeason] = useState<string>('1');
@@ -39,9 +40,13 @@ const DetailsPage: React.FC<DetailsPageProps> = ({ movieId, onClose, onMoviePres
     const [activeTab, setActiveTab] = useState<string>('Overview');
 
     // Determine tabs based on content type
-    const tabs = (details?.type === 't' || details?.season)
-        ? ['Episodes', 'Overview', 'Casts', 'Reviews', 'Related']
-        : ['Overview', 'Casts', 'Reviews', 'Related'];
+    let tabs = (details?.type === 't' || details?.season)
+        ? ['Episodes', 'Overview', 'Casts', 'Related']
+        : ['Overview', 'Casts', 'Related'];
+
+    if (providerId === 'Prime' || providerId === 'Prime Video') {
+        tabs = tabs.filter(t => t !== 'Related');
+    }
 
     const getPosterUrl = useCallback((id: string, type: 'poster' | 'hero') => {
         if (providerId === 'Hotstar') {
@@ -123,7 +128,7 @@ const DetailsPage: React.FC<DetailsPageProps> = ({ movieId, onClose, onMoviePres
 
     const loadDetails = async () => {
         setLoading(true);
-        const data = await fetchMovieDetails(movieId, providerId);
+        const data = await fetchMovieDetails(movieId, providerId, undefined, title);
         setDetails(data);
 
         let initialEpisodes: Episode[] = [];

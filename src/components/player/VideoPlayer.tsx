@@ -318,12 +318,23 @@ const VideoPlayer: React.FC<VideoPlayerProps> = (props) => {
         setBrightness(prev => Math.max(0, Math.min(1, prev + delta)));
     }, []);
 
-    const textTracks = localTracks?.filter(t => t.kind !== 'audio').map(track => ({
-        title: track.label || 'Unknown',
-        language: (track.label || 'en').substring(0, 2).toLowerCase(),
-        type: track.kind === 'captions' ? 'application/x-subrip' : 'text/vtt',
-        uri: track.file
-    }));
+    const textTracks = localTracks?.filter(t => t.kind !== 'audio').map(track => {
+        let type = 'text/vtt'; // Default
+        if (track.file.endsWith('.srt')) {
+            type = 'application/x-subrip';
+        } else if (track.file.endsWith('.ttml')) {
+            type = 'application/ttml+xml';
+        } else if (track.kind === 'captions') {
+            type = 'application/x-subrip'; // Fallback for captions if no extension match
+        }
+
+        return {
+            title: track.label || 'Unknown',
+            language: (track.label || 'en').substring(0, 2).toLowerCase(),
+            type: type,
+            uri: track.file
+        };
+    });
 
     const selectedTextTrackProp = selectedTextTrack ? {
         type: 'title',

@@ -31,6 +31,7 @@ const PrimeScreen = () => {
     const [heroMovie, setHeroMovie] = useState<Movie | null>(null);
     const [selectedProvider] = useState<string>('Prime');
     const [historySection, setHistorySection] = useState<Section | null>(null);
+    const [activeCategory, setActiveCategory] = useState<string>('All');
 
     useFocusEffect(
         React.useCallback(() => {
@@ -77,8 +78,29 @@ const PrimeScreen = () => {
         navigation.navigate('Details', {
             movieId: movie.id,
             providerId: selectedProvider,
+            title: movie.title,
         });
     };
+
+    const handleSearchPress = () => {
+        navigation.navigate('Search', { initialProvider: 'Prime' });
+    };
+
+    const getFilteredSections = () => {
+        if (activeCategory === 'All') return sections;
+
+        return sections.filter(section => {
+            const title = section.title.toLowerCase();
+            if (activeCategory === 'Movies') {
+                return title.includes('movie') || title.includes('film');
+            } else if (activeCategory === 'Series') {
+                return title.includes('series') || title.includes('tv') || title.includes('show') || title.includes('original');
+            }
+            return true;
+        });
+    };
+
+    const filteredSections = getFilteredSections();
 
     const renderItem = useCallback(({ item, index }: { item: Section; index: number }) => {
         if (item.title === 'Keep watching') {
@@ -117,7 +139,7 @@ const PrimeScreen = () => {
 
             <View style={{ flex: 1 }}>
                 <FlatList
-                    data={historySection ? [historySection, ...sections] : sections}
+                    data={historySection ? [historySection, ...filteredSections] : filteredSections}
                     keyExtractor={(item, index) => `${item.title}-${index}`}
                     renderItem={renderItem}
                     ListHeaderComponent={
@@ -136,9 +158,9 @@ const PrimeScreen = () => {
                     maxToRenderPerBatch={3}
                     windowSize={5}
                     ListEmptyComponent={
-                        !loading && sections.length === 0 ? (
+                        !loading && filteredSections.length === 0 ? (
                             <View style={styles.noContentContainer}>
-                                <Text style={styles.noContentText}>No Prime content available.</Text>
+                                <Text style={styles.noContentText}>No content available for {activeCategory}.</Text>
                                 <Text style={styles.noContentSubText}>Try checking your internet connection or try again later.</Text>
                                 <TouchableOpacity style={styles.retryButton} onPress={loadData}>
                                     <Text style={styles.retryButtonText}>Retry</Text>
@@ -150,7 +172,11 @@ const PrimeScreen = () => {
 
                 {/* Header Overlay */}
                 <View style={[styles.topBar, { paddingTop: insets.top + 10 }]}>
-                    <PrimeHeader />
+                    <PrimeHeader
+                        activeCategory={activeCategory}
+                        onCategoryPress={setActiveCategory}
+                        onSearchPress={handleSearchPress}
+                    />
                 </View>
             </View>
         </GradientBackground>

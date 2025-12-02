@@ -12,6 +12,7 @@ interface PrimeSectionProps {
 }
 
 const PrimeSection = ({ section, onMoviePress, variant = 'standard' }: PrimeSectionProps) => {
+    if (!section.movies || section.movies.length === 0) return null;
 
     const renderItem = ({ item }: { item: Movie }) => {
         if (variant === 'keep-watching') {

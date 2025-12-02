@@ -14,6 +14,8 @@ import AnimatedText from './AnimatedText';
 // ... imports
 
 const Row: React.FC<RowProps> = ({ section, onMoviePress, variant = 'standard' }) => {
+    if (!section.movies || section.movies.length === 0) return null;
+
     const renderItem = React.useCallback(({ item }: { item: Movie }) => (
         <MovieItem
             movie={item}

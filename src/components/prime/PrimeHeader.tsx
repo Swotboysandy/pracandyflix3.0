@@ -1,17 +1,36 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
 
-const PrimeHeader = () => {
+interface PrimeHeaderProps {
+    activeCategory: string;
+    onCategoryPress: (category: string) => void;
+    onSearchPress: () => void;
+}
+
+const PrimeHeader = ({ activeCategory, onCategoryPress, onSearchPress }: PrimeHeaderProps) => {
+    const categories = ['All', 'Movies', 'Series'];
+
     return (
         <View style={styles.container}>
-            <TouchableOpacity style={styles.activePill}>
-                <Text style={styles.activeText}>All</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.pill}>
-                <Text style={styles.text}>Movies</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.pill}>
-                <Text style={styles.text}>Series</Text>
+            <View style={styles.pillsContainer}>
+                {categories.map((category) => (
+                    <TouchableOpacity
+                        key={category}
+                        style={activeCategory === category ? styles.activePill : styles.pill}
+                        onPress={() => onCategoryPress(category)}
+                    >
+                        <Text style={activeCategory === category ? styles.activeText : styles.text}>
+                            {category}
+                        </Text>
+                    </TouchableOpacity>
+                ))}
+            </View>
+
+            <TouchableOpacity onPress={onSearchPress} style={styles.searchButton}>
+                <Image
+                    source={{ uri: 'https://img.icons8.com/ios-filled/50/ffffff/search--v1.png' }}
+                    style={styles.searchIcon}
+                />
             </TouchableOpacity>
         </View>
     );
@@ -21,6 +40,12 @@ const styles = StyleSheet.create({
     container: {
         flexDirection: 'row',
         paddingHorizontal: 20,
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        width: '100%',
+    },
+    pillsContainer: {
+        flexDirection: 'row',
         gap: 15,
         alignItems: 'center',
     },
@@ -43,6 +68,14 @@ const styles = StyleSheet.create({
         color: '#aaa',
         fontWeight: 'bold',
         fontSize: 14,
+    },
+    searchButton: {
+        padding: 5,
+    },
+    searchIcon: {
+        width: 24,
+        height: 24,
+        tintColor: 'white',
     },
 });
 
