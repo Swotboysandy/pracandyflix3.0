@@ -2,6 +2,7 @@ const axios = require('axios');
 
 const COOKIE_URL = 'https://raw.githubusercontent.com/Anshu78780/json/main/cookies.json';
 const streamBaseUrl = 'https://net20.cc';
+const playlistBaseUrl = 'https://net51.cc';
 
 const testNetflix = async () => {
     try {
@@ -35,15 +36,15 @@ const testNetflix = async () => {
 
         // GET playlist.php
         const timestamp = Math.round(new Date().getTime() / 1000);
-        const playlistUrl = `${streamBaseUrl}/playlist.php?id=${id}&t=${encodeURIComponent(title)}&tm=${timestamp}&h=${playResponse.data.h}`;
+        const playlistUrl = `${playlistBaseUrl}/playlist.php?id=${id}&t=${encodeURIComponent(title)}&tm=${timestamp}&h=${playResponse.data.h}`;
         
         console.log('Fetching playlist:', playlistUrl);
         
         const playlistResponse = await axios.get(playlistUrl, {
             headers: {
                 'Cookie': cookies,
-                'Referer': 'https://net20.cc/',
-                'Origin': 'https://net20.cc',
+                'Referer': 'https://net51.cc/',
+                'Origin': 'https://net51.cc',
             },
         });
 
@@ -54,7 +55,7 @@ const testNetflix = async () => {
 
         let streamUrl = data.sources[0].file;
         if (!streamUrl.startsWith('http')) {
-            streamUrl = streamBaseUrl + streamUrl;
+            streamUrl = playlistBaseUrl + streamUrl;
         }
         console.log('Stream URL:', streamUrl);
 
@@ -64,7 +65,7 @@ const testNetflix = async () => {
             const streamRes = await axios.get(streamUrl, {
                 headers: {
                     'Cookie': cookies,
-                    'Referer': 'https://net20.cc/',
+                    'Referer': 'https://net51.cc/',
                     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
                 },
             });
@@ -89,7 +90,7 @@ const testNetflix = async () => {
                     const mediaRes = await axios.get(mediaPlaylistLine, {
                         headers: {
                             'Cookie': cookies,
-                            'Referer': 'https://net20.cc/',
+                            'Referer': 'https://net51.cc/',
                         },
                         timeout: 5000
                     });

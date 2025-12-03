@@ -169,12 +169,21 @@ const VideoPlayer: React.FC<VideoPlayerProps> = (props) => {
         }
 
         if (data.textTracks && Array.isArray(data.textTracks)) {
-            const detectedSubs = data.textTracks.map((track: any, index: number) => ({
-                file: track.uri || `sub_${index}`,
-                label: track.title || track.language || `Subtitle ${index + 1}`,
-                kind: 'subtitles',
-                default: track.selected
-            }));
+            const detectedSubs = data.textTracks.map((track: any, index: number) => {
+                let uri = track.uri || `sub_${index}`;
+                // Resolve relative URLs
+                if (uri && !uri.startsWith('http') && !uri.startsWith('sub_')) {
+                    const baseUrl = currentVideoUrl.substring(0, currentVideoUrl.lastIndexOf('/') + 1);
+                    uri = baseUrl + uri;
+                }
+
+                return {
+                    file: uri,
+                    label: track.title || track.language || `Subtitle ${index + 1}`,
+                    kind: 'subtitles',
+                    default: track.selected
+                };
+            });
 
             detectedSubs.forEach((dt: StreamTrack) => {
                 if (!newTracks.some(t => t.kind !== 'audio' && t.label === dt.label)) {

@@ -187,14 +187,14 @@ const styles = StyleSheet.create({
     container: {
         ...StyleSheet.absoluteFillObject,
         justifyContent: 'space-between',
-        backgroundColor: 'rgba(0,0,0,0.65)',
+        backgroundColor: 'rgba(0,0,0,0.15)', // Almost transparent
         zIndex: 100,
     },
     loadingContainer: {
         ...StyleSheet.absoluteFillObject,
         justifyContent: 'center',
         alignItems: 'center',
-        backgroundColor: 'rgba(0,0,0,0.8)',
+        backgroundColor: 'rgba(0,0,0,0.5)',
         zIndex: 200,
     },
     loadingText: {
@@ -225,7 +225,7 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
         padding: 16,
         paddingTop: 20,
-        backgroundColor: 'rgba(0,0,0,0.7)',
+        backgroundColor: 'transparent', // Removed background
     },
     title: {
         color: '#fff',
@@ -233,6 +233,9 @@ const styles = StyleSheet.create({
         fontWeight: 'bold',
         marginLeft: 10,
         flex: 1,
+        textShadowColor: 'rgba(0, 0, 0, 0.75)', // Added shadow for readability
+        textShadowOffset: { width: -1, height: 1 },
+        textShadowRadius: 10
     },
     centerControls: {
         flexDirection: 'row',
@@ -244,7 +247,7 @@ const styles = StyleSheet.create({
         width: 80,
         height: 80,
         borderRadius: 40,
-        backgroundColor: 'rgba(255,255,255,0.3)',
+        backgroundColor: 'rgba(0,0,0,0.3)', // More transparent
         justifyContent: 'center',
         alignItems: 'center',
     },
@@ -256,11 +259,14 @@ const styles = StyleSheet.create({
         fontSize: 12,
         marginTop: 4,
         fontWeight: 'bold',
+        textShadowColor: 'rgba(0, 0, 0, 0.75)',
+        textShadowOffset: { width: -1, height: 1 },
+        textShadowRadius: 10
     },
     bottomBar: {
         padding: 16,
         paddingBottom: 20,
-        backgroundColor: 'rgba(0,0,0,0.7)',
+        backgroundColor: 'transparent', // Removed background
     },
     sliderContainer: {
         flexDirection: 'row',

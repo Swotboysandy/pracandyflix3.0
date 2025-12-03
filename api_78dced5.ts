@@ -1,6 +1,5 @@
-import axios from 'axios';
+﻿import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { searchNetflix as searchNetflixLocal, getNetflixDetails as getNetflixDetailsLocal } from './netflixLocalApi';
 
 export interface Movie {
     id: string;
@@ -29,10 +28,6 @@ export interface HistoryItem extends Movie {
 }
 
 const HISTORY_KEY = 'watch_history';
-
-// Configuration for localhost API
-const USE_LOCALHOST_API = false; // Set to true to use localhost:3000 API for Netflix
-const LOCALHOST_API_ENABLED = USE_LOCALHOST_API;
 
 export const addToHistory = async (item: HistoryItem) => {
     try {
@@ -208,8 +203,9 @@ export interface MovieDetails {
     provider?: string;
 }
 
-export const fetchMovieDetails = async (id: string, providerId: string = 'Netflix', season?: string, title?: string): Promise<MovieDetails | null> => {
+export const fetchMovieDetails = async (id: string, providerId: string = 'Netflix', season?: string): Promise<MovieDetails | null> => {
     try {
+        // 1. Fetch Cookies
         const cookieResponse = await axios.get(COOKIE_URL);
         const cookie = cookieResponse.data.cookies;
 
@@ -232,6 +228,8 @@ export const fetchMovieDetails = async (id: string, providerId: string = 'Netfli
             url = `${baseUrl}/post.php?id=${id}&t=${time}`;
             referer = `${baseUrl}/home`;
         }
+
+        // Note: We do NOT append &s= to post.php anymore, as we handle season fetching via episodes.php
 
         const headers = {
             'Cookie': cookie,
@@ -345,7 +343,7 @@ export const getStreamUrl = async (
         }
         const cookies = baseCookie + `ott=${ott}; hd=on;`;
 
-        const streamBaseUrl = 'https://net51.cc';
+        const streamBaseUrl = 'https://net20.cc';
 
         // For Hotstar, use simplified approach without play.php
         if (providerId === 'Hotstar') {
@@ -379,24 +377,13 @@ export const getStreamUrl = async (
                     streamUrl = streamUrl.replace('//mobile', '/mobile');
                 }
 
-                // Normalize track URLs
-                const tracks = data.tracks?.map((track: any) => {
-                    if (track.file && !track.file.startsWith('http')) {
-                        return {
-                            ...track,
-                            file: streamBaseUrl + track.file
-                        };
-                    }
-                    return track;
-                });
-
                 console.log('Final Hotstar stream URL:', streamUrl);
                 console.log('Using cookies:', cookies);
 
                 return {
                     url: streamUrl,
                     sources: data.sources,
-                    tracks: tracks,
+                    tracks: data.tracks,
                     cookies: cookies,
                     referer: `${streamBaseUrl}/`,
                 };
@@ -438,24 +425,13 @@ export const getStreamUrl = async (
                     streamUrl = streamUrl.replace('//mobile', '/mobile');
                 }
 
-                // Normalize track URLs
-                const tracks = data.tracks?.map((track: any) => {
-                    if (track.file && !track.file.startsWith('http')) {
-                        return {
-                            ...track,
-                            file: streamBaseUrl + track.file
-                        };
-                    }
-                    return track;
-                });
-
                 console.log('Final PV stream URL:', streamUrl);
                 console.log('Using cookies:', cookies);
 
                 return {
                     url: streamUrl,
                     sources: data.sources,
-                    tracks: tracks,
+                    tracks: data.tracks,
                     cookies: cookies,
                     referer: `${streamBaseUrl}/`,
                 };
@@ -469,13 +445,14 @@ export const getStreamUrl = async (
         // 2. POST to play.php to get the 'h' parameter
         const baseUrl = 'https://net20.cc';
         const playUrl = `${baseUrl}/play.php`;
-        const formData = new FormData();
-        formData.append('id', id);
 
-        const playResponse = await axios.post(playUrl, formData, {
+        const params = new URLSearchParams();
+        params.append('id', id);
+
+        const playResponse = await axios.post(playUrl, params.toString(), {
             headers: {
                 'Cookie': cookies,
-                'Content-Type': 'multipart/form-data',
+                'Content-Type': 'application/x-www-form-urlencoded',
             },
         });
 
@@ -487,18 +464,15 @@ export const getStreamUrl = async (
         }
 
         // 3. Make request to playlist.php with the h parameter
-        // Use net51.cc for Netflix playlist as well, as per earlier working state
-        const netflixStreamBaseUrl = 'https://net51.cc';
         const timestamp = Math.round(new Date().getTime() / 1000);
-        const playlistUrl = `${netflixStreamBaseUrl}/playlist.php?id=${id}&t=${encodeURIComponent(title)}&tm=${timestamp}&h=${playResponse.data.h}`;
+        const playlistUrl = `${streamBaseUrl}/playlist.php?id=${id}&t=${encodeURIComponent(title)}&tm=${timestamp}&h=${playResponse.data.h}`;
 
         console.log('Playlist URL:', playlistUrl);
 
         const playlistResponse = await axios.get(playlistUrl, {
             headers: {
                 'Cookie': cookies,
-                'Referer': 'https://net51.cc/',
-                'Origin': 'https://net51.cc',
+                'Referer': 'https://net20.cc/',
             },
         });
 
@@ -507,33 +481,23 @@ export const getStreamUrl = async (
         const data = playlistResponse.data?.[0];
 
         if (data?.sources && data.sources.length > 0) {
-            let streamUrl = data.sources[0].file;
+            // Convert all relative paths to absolute URLs
+            const absoluteSources = data.sources.map((source: any) => ({
+                ...source,
+                file: source.file.startsWith('http') ? source.file : streamBaseUrl + source.file
+            }));
 
-            // If it's a relative path, prepend the stream base URL
-            if (!streamUrl.startsWith('http')) {
-                streamUrl = netflixStreamBaseUrl + streamUrl;
-            }
-
-            // Normalize track URLs
-            const tracks = data.tracks?.map((track: any) => {
-                if (track.file && !track.file.startsWith('http')) {
-                    return {
-                        ...track,
-                        file: netflixStreamBaseUrl + track.file
-                    };
-                }
-                return track;
-            });
+            let streamUrl = absoluteSources[0].file;
 
             console.log('Final stream URL:', streamUrl);
             console.log('Using cookies:', cookies);
 
             return {
                 url: streamUrl,
-                sources: data.sources,
-                tracks: tracks,
+                sources: absoluteSources,
+                tracks: data.tracks,
                 cookies: cookies,
-                referer: 'https://net51.cc/',
+                referer: 'https://net20.cc/',
             };
         }
 

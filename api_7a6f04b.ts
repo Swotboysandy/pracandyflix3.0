@@ -1,12 +1,9 @@
-import axios from 'axios';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { searchNetflix as searchNetflixLocal, getNetflixDetails as getNetflixDetailsLocal } from './netflixLocalApi';
+﻿import axios from 'axios';
 
 export interface Movie {
     id: string;
     title: string;
     imageUrl: string;
-    originalImageUrl?: string;
     provider?: string;
 }
 
@@ -20,68 +17,6 @@ export interface Provider {
     name: string;
     url: string;
 }
-
-export interface HistoryItem extends Movie {
-    progress: number; // in seconds
-    duration: number; // in seconds
-    timestamp: number; // last watched time
-    provider: string; // 'Netflix' or 'Prime'
-}
-
-const HISTORY_KEY = 'watch_history';
-
-// Configuration for localhost API
-const USE_LOCALHOST_API = false; // Set to true to use localhost:3000 API for Netflix
-const LOCALHOST_API_ENABLED = USE_LOCALHOST_API;
-
-export const addToHistory = async (item: HistoryItem) => {
-    try {
-        const history = await getHistory();
-        // Remove existing entry for this movie if it exists
-        const filtered = history.filter(h => h.id !== item.id);
-        // Add new item to the beginning
-        const updated = [item, ...filtered];
-        // Limit history to 20 items
-        if (updated.length > 20) updated.pop();
-
-        await AsyncStorage.setItem(HISTORY_KEY, JSON.stringify(updated));
-    } catch (error) {
-        console.error('Error adding to history:', error);
-    }
-};
-
-export const getHistory = async (filterProvider?: string): Promise<HistoryItem[]> => {
-    try {
-        const json = await AsyncStorage.getItem(HISTORY_KEY);
-        let history: HistoryItem[] = json ? JSON.parse(json) : [];
-
-        if (filterProvider) {
-            history = history.filter(item => {
-                // Handle legacy items that might not have a provider (assume Netflix)
-                const itemProvider = item.provider || 'Netflix';
-                // Normalize provider names for comparison
-                const p1 = itemProvider.toLowerCase().includes('prime') ? 'Prime' : 'Netflix';
-                const p2 = filterProvider.toLowerCase().includes('prime') ? 'Prime' : 'Netflix';
-                return p1 === p2;
-            });
-        }
-
-        return history;
-    } catch (error) {
-        console.error('Error getting history:', error);
-        return [];
-    }
-};
-
-export const removeFromHistory = async (id: string) => {
-    try {
-        const history = await getHistory();
-        const updated = history.filter(h => h.id !== id);
-        await AsyncStorage.setItem(HISTORY_KEY, JSON.stringify(updated));
-    } catch (error) {
-        console.error('Error removing from history:', error);
-    }
-};
 
 const PROVIDERS_URL = 'https://raw.githubusercontent.com/Anshu78780/json/main/providers.json';
 const COOKIE_URL = 'https://raw.githubusercontent.com/Anshu78780/json/main/cookies.json';
@@ -120,23 +55,11 @@ export const fetchHomeData = async (): Promise<Section[]> => {
         if (response.data && response.data.success && response.data.data) {
             const sections: Section[] = response.data.data.map((category: any) => ({
                 title: category.title,
-                movies: category.movies.map((item: any) => {
-                    let imageUrl = item.imageUrl;
-                    const originalImageUrl = item.imageUrl; // Store original
-
-                    // Upgrade resolution if possible
-                    if (imageUrl) {
-                        imageUrl = imageUrl.replace('/poster/h/', '/poster/v/');
-                        imageUrl = imageUrl.replace('/poster/m/', '/poster/v/');
-                        imageUrl = imageUrl.replace('/341/', '/v/');
-                    }
-                    return {
-                        id: item.id,
-                        title: item.title || item.id,
-                        imageUrl: imageUrl,
-                        originalImageUrl: originalImageUrl,
-                    };
-                }),
+                movies: category.movies.map((item: any) => ({
+                    id: item.id,
+                    title: item.title || item.id,
+                    imageUrl: item.imageUrl,
+                })),
             }));
 
             return sections;
@@ -144,7 +67,7 @@ export const fetchHomeData = async (): Promise<Section[]> => {
 
         return [];
     } catch (error) {
-        console.warn('Error fetching data:', error);
+        console.error('Error fetching data:', error);
         return [];
     }
 };
@@ -208,8 +131,9 @@ export interface MovieDetails {
     provider?: string;
 }
 
-export const fetchMovieDetails = async (id: string, providerId: string = 'Netflix', season?: string, title?: string): Promise<MovieDetails | null> => {
+export const fetchMovieDetails = async (id: string, providerId: string = 'Netflix', season?: string): Promise<MovieDetails | null> => {
     try {
+        // 1. Fetch Cookies
         const cookieResponse = await axios.get(COOKIE_URL);
         const cookie = cookieResponse.data.cookies;
 
@@ -218,14 +142,11 @@ export const fetchMovieDetails = async (id: string, providerId: string = 'Netfli
         const baseUrl = 'https://net20.cc';
         let url: string;
         let referer: string;
-        let basePath = '';
 
         if (providerId === 'Hotstar') {
-            basePath = '/hs';
             url = `${baseUrl}/hs/post.php?id=${id}&t=${time}`;
             referer = `${baseUrl}/hs/home`;
         } else if (providerId === 'Prime') {
-            basePath = '/pv';
             url = `${baseUrl}/pv/post.php?id=${id}&t=${time}`;
             referer = `${baseUrl}/pv/home`;
         } else {
@@ -233,59 +154,24 @@ export const fetchMovieDetails = async (id: string, providerId: string = 'Netfli
             referer = `${baseUrl}/home`;
         }
 
-        const headers = {
-            'Cookie': cookie,
-            'Referer': referer,
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-        };
+        if (season) {
+            url += `&s=${season}`;
+        }
 
-        const response = await axios.get(url, { headers });
+        const response = await axios.get(url, {
+            headers: {
+                'Cookie': cookie,
+                'Referer': referer,
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+            },
+        });
 
-        if (response.data) {
-            let data = response.data;
+        if (response.data && response.data.status === 'y') {
+            const data = response.data;
 
-            // Handle nested 'movie' object if present
-            if (data.movie) {
-                data = data.movie;
-            }
-
-            // Basic validation to ensure we have some data
-            if (data.id || data.title || data.episodes) {
-                // Set provider
-                data.provider = providerId;
-
-                // 3. Handle Season Selection
-                if (season && data.season && Array.isArray(data.season)) {
-                    // Find the season ID for the requested season number
-                    // season arg might be "1" or "Season 1" or the ID itself.
-                    const targetSeason = data.season.find((s: any) =>
-                        String(s.s) === String(season) ||
-                        String(s.id) === String(season) ||
-                        `Season ${s.s}` === season
-                    );
-
-                    if (targetSeason) {
-                        console.log(`fetchMovieDetails: Fetching episodes for season ${season} (ID: ${targetSeason.id})`);
-                        const episodesUrl = `${baseUrl}${basePath}/episodes.php?s=${targetSeason.id}&t=${time}&page=1`;
-
-                        try {
-                            const epResponse = await axios.get(episodesUrl, { headers });
-                            if (epResponse.data && epResponse.data.episodes) {
-                                console.log(`fetchMovieDetails: Found ${epResponse.data.episodes.length} episodes for season ${season}`);
-                                data.episodes = epResponse.data.episodes;
-                            } else {
-                                console.log('fetchMovieDetails: No episodes found in season response');
-                            }
-                        } catch (epError) {
-                            console.error('fetchMovieDetails: Error fetching season episodes:', epError);
-                        }
-                    } else {
-                        console.log(`fetchMovieDetails: Season ${season} not found in season list`);
-                    }
-                }
-
-                return data;
-            }
+            // Set provider
+            data.provider = providerId;
+            return data;
         }
 
         return null;
@@ -301,25 +187,14 @@ export interface StreamSource {
     type?: string;
 }
 
-export interface StreamTrack {
-    file: string;
-    label: string;
-    kind: string;
-    default?: boolean;
-}
-
 export interface StreamData {
     sources: StreamSource[];
-    tracks?: StreamTrack[];
     title?: string;
 }
 
 export interface StreamResult {
-    url: string; // Keep for backward compatibility or primary stream
-    sources?: StreamSource[];
-    tracks?: StreamTrack[];
+    url: string;
     cookies: string;
-    referer?: string;
 }
 
 export const getStreamUrl = async (
@@ -379,26 +254,12 @@ export const getStreamUrl = async (
                     streamUrl = streamUrl.replace('//mobile', '/mobile');
                 }
 
-                // Normalize track URLs
-                const tracks = data.tracks?.map((track: any) => {
-                    if (track.file && !track.file.startsWith('http')) {
-                        return {
-                            ...track,
-                            file: streamBaseUrl + track.file
-                        };
-                    }
-                    return track;
-                });
-
                 console.log('Final Hotstar stream URL:', streamUrl);
                 console.log('Using cookies:', cookies);
 
                 return {
                     url: streamUrl,
-                    sources: data.sources,
-                    tracks: tracks,
                     cookies: cookies,
-                    referer: `${streamBaseUrl}/`,
                 };
             }
 
@@ -438,26 +299,12 @@ export const getStreamUrl = async (
                     streamUrl = streamUrl.replace('//mobile', '/mobile');
                 }
 
-                // Normalize track URLs
-                const tracks = data.tracks?.map((track: any) => {
-                    if (track.file && !track.file.startsWith('http')) {
-                        return {
-                            ...track,
-                            file: streamBaseUrl + track.file
-                        };
-                    }
-                    return track;
-                });
-
                 console.log('Final PV stream URL:', streamUrl);
                 console.log('Using cookies:', cookies);
 
                 return {
                     url: streamUrl,
-                    sources: data.sources,
-                    tracks: tracks,
                     cookies: cookies,
-                    referer: `${streamBaseUrl}/`,
                 };
             }
 
@@ -487,10 +334,8 @@ export const getStreamUrl = async (
         }
 
         // 3. Make request to playlist.php with the h parameter
-        // Use net51.cc for Netflix playlist as well, as per earlier working state
-        const netflixStreamBaseUrl = 'https://net51.cc';
         const timestamp = Math.round(new Date().getTime() / 1000);
-        const playlistUrl = `${netflixStreamBaseUrl}/playlist.php?id=${id}&t=${encodeURIComponent(title)}&tm=${timestamp}&h=${playResponse.data.h}`;
+        const playlistUrl = `${streamBaseUrl}/playlist.php?id=${id}&t=${encodeURIComponent(title)}&tm=${timestamp}&h=${playResponse.data.h}`;
 
         console.log('Playlist URL:', playlistUrl);
 
@@ -511,29 +356,15 @@ export const getStreamUrl = async (
 
             // If it's a relative path, prepend the stream base URL
             if (!streamUrl.startsWith('http')) {
-                streamUrl = netflixStreamBaseUrl + streamUrl;
+                streamUrl = streamBaseUrl + streamUrl;
             }
-
-            // Normalize track URLs
-            const tracks = data.tracks?.map((track: any) => {
-                if (track.file && !track.file.startsWith('http')) {
-                    return {
-                        ...track,
-                        file: netflixStreamBaseUrl + track.file
-                    };
-                }
-                return track;
-            });
 
             console.log('Final stream URL:', streamUrl);
             console.log('Using cookies:', cookies);
 
             return {
                 url: streamUrl,
-                sources: data.sources,
-                tracks: tracks,
                 cookies: cookies,
-                referer: 'https://net51.cc/',
             };
         }
 
@@ -664,11 +495,11 @@ export const searchMovies = async (query: string, providerId: string = 'Netflix'
             return response.data.searchResult.map((item: any) => {
                 let imageUrl: string;
                 if (providerId === 'Hotstar') {
-                    imageUrl = `https://imgcdn.media/hs/v/${item.id}.jpg`;
+                    imageUrl = `https://imgcdn.media/hs/341/${item.id}.jpg`;
                 } else if (providerId === 'Prime') {
-                    imageUrl = `https://imgcdn.kim/pv/v/${item.id}.jpg`;
+                    imageUrl = `https://imgcdn.kim/pv/341/${item.id}.jpg`;
                 } else {
-                    imageUrl = `https://img.nfmirrorcdn.top/poster/v/${item.id}.jpg`;
+                    imageUrl = `https://img.nfmirrorcdn.top/poster/h/${item.id}.jpg`;
                 }
 
                 return {
@@ -683,41 +514,6 @@ export const searchMovies = async (query: string, providerId: string = 'Netflix'
         return [];
     } catch (error) {
         console.error('Error searching movies:', error);
-        return [];
-    }
-};
-
-export const fetchPrimeHomeData = async (): Promise<Section[]> => {
-    try {
-        const queries = [
-            'Top Movies', 'Top Rated', 'Recently Added', 'English Movies',
-            'Latest Movies', 'Top 10 India', 'Romance', 'Romantic Comedy',
-            'Young Adult', 'Horror', 'Action', 'Thriller', 'Drama', 'Sci-Fi',
-            'Adventure', 'Fantasy', 'Crime', 'Mystery', 'Documentary', 'Kids',
-            'Hindi Movies', 'Telugu Movies', 'Tamil Movies', 'Malayalam Movies'
-        ];
-
-        // Fetch sequentially or with limited concurrency if needed, but for now let's just make sure one failure doesn't kill all
-        const results = await Promise.all(
-            queries.map(async (q) => {
-                try {
-                    const movies = await searchMovies(q, 'Prime');
-                    return {
-                        title: `${q} Movies`,
-                        movies: movies
-                    };
-                } catch (e) {
-                    console.error(`Failed to fetch Prime category: ${q}`, e);
-                    return null;
-                }
-            })
-        );
-
-        return results
-            .filter((section): section is Section => section !== null && section.movies.length >= 4);
-
-    } catch (error) {
-        console.error('Error fetching Prime home data:', error);
         return [];
     }
 };
