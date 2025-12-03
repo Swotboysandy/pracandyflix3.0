@@ -1,10 +1,9 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { Home, Film, Tv, LayoutGrid, TestTube } from 'lucide-react-native';
+import { Home, Film, Tv, LayoutGrid } from 'lucide-react-native';
 import HomeScreen from '../screens/HomeScreen';
 import ProviderScreen from '../screens/ProviderScreen';
 import HomeWrapper from '../screens/HomeWrapper';
-import ApiTestScreen from '../screens/ApiTestScreen';
 
 const Tab = createBottomTabNavigator();
 
@@ -65,14 +64,7 @@ const BottomTabNavigator = () => {
                     tabBarIcon: ({ color, size }) => <LayoutGrid color={color} size={size} />,
                 }}
             />
-            <Tab.Screen
-                name="ApiTest"
-                component={ApiTestScreen}
-                options={{
-                    tabBarLabel: 'API Test',
-                    tabBarIcon: ({ color, size }) => <TestTube color={color} size={size} />,
-                }}
-            />
+
         </Tab.Navigator>
     );
 };

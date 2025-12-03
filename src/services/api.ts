@@ -689,7 +689,7 @@ export const searchMovies = async (query: string, providerId: string = 'Netflix'
 
 export const fetchPrimeHomeData = async (): Promise<Section[]> => {
     try {
-        const queries = [
+        const movieQueries = [
             'Top Movies', 'Top Rated', 'Recently Added', 'English Movies',
             'Latest Movies', 'Top 10 India', 'Romance', 'Romantic Comedy',
             'Young Adult', 'Horror', 'Action', 'Thriller', 'Drama', 'Sci-Fi',
@@ -697,23 +697,32 @@ export const fetchPrimeHomeData = async (): Promise<Section[]> => {
             'Hindi Movies', 'Telugu Movies', 'Tamil Movies', 'Malayalam Movies'
         ];
 
-        // Fetch sequentially or with limited concurrency if needed, but for now let's just make sure one failure doesn't kill all
-        const results = await Promise.all(
-            queries.map(async (q) => {
-                try {
-                    const movies = await searchMovies(q, 'Prime');
-                    return {
-                        title: `${q} Movies`,
-                        movies: movies
-                    };
-                } catch (e) {
-                    console.error(`Failed to fetch Prime category: ${q}`, e);
-                    return null;
-                }
-            })
-        );
+        const seriesQueries = [
+            'Amazon Originals', 'TV Shows', 'Web Series', 'Top Series',
+            'Action Series', 'Drama Series', 'Comedy Series'
+        ];
 
-        return results
+        const fetchSection = async (q: string, suffix: string = '') => {
+            try {
+                const movies = await searchMovies(q, 'Prime');
+                return {
+                    title: suffix ? `${q} ${suffix}` : q,
+                    movies: movies
+                };
+            } catch (e) {
+                console.error(`Failed to fetch Prime category: ${q}`, e);
+                return null;
+            }
+        };
+
+        const [movieSections, seriesSections] = await Promise.all([
+            Promise.all(movieQueries.map(q => fetchSection(q, 'Movies'))),
+            Promise.all(seriesQueries.map(q => fetchSection(q)))
+        ]);
+
+        const allSections = [...movieSections, ...seriesSections];
+
+        return allSections
             .filter((section): section is Section => section !== null && section.movies.length >= 4);
 
     } catch (error) {

@@ -16,6 +16,7 @@ import { useNavigation } from '@react-navigation/native';
 import { useFocusEffect } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { fetchHomeData, Section, Movie, fetchMovieDetails, getHistory } from '../services/api';
+import { getWatchlist } from '../services/watchlistService';
 import Row from '../components/Row';
 import MovieItem from '../components/MovieItem';
 import { RootStackParamList } from '../navigation/types';
@@ -31,11 +32,14 @@ const HomeScreen = ({ route }: any) => {
     const navigation = useNavigation<HomeScreenNavigationProp>();
     const insets = useSafeAreaInsets();
     const [sections, setSections] = useState<Section[]>([]);
+    const routeName = route?.name || 'HomeTab';
     const [loading, setLoading] = useState(true);
     const [heroMovie, setHeroMovie] = useState<Movie | null>(null);
     const [selectedProvider] = useState<string>('Netflix');
     const [isProviderModalVisible, setIsProviderModalVisible] = useState(false);
     const [historySection, setHistorySection] = useState<Section | null>(null);
+    const [watchlistSection, setWatchlistSection] = useState<Section | null>(null);
+    const [activeCategory, setActiveCategory] = useState<string>('All');
 
 
 
@@ -55,6 +59,16 @@ const HomeScreen = ({ route }: any) => {
         } else {
             setHistorySection(null);
         }
+
+        const watchlist = await getWatchlist('Netflix');
+        if (watchlist.length > 0) {
+            setWatchlistSection({
+                title: 'Your Watchlist',
+                movies: watchlist
+            });
+        } else {
+            setWatchlistSection(null);
+        }
     };
 
     useEffect(() => {
@@ -65,14 +79,14 @@ const HomeScreen = ({ route }: any) => {
         const data = await fetchHomeData();
         let filteredData = data;
 
-        if (route?.name === 'Movies') {
+        if (routeName === 'Movies') {
             filteredData = data.filter(s =>
                 s.title.toLowerCase().includes('movie') ||
                 s.title.toLowerCase().includes('film') ||
                 s.title.toLowerCase().includes('hollywood') ||
                 s.title.toLowerCase().includes('bollywood')
             );
-        } else if (route?.name === 'Series') {
+        } else if (routeName === 'Series') {
             filteredData = data.filter(s =>
                 s.title.toLowerCase().includes('series') ||
                 s.title.toLowerCase().includes('tv') ||
@@ -81,17 +95,17 @@ const HomeScreen = ({ route }: any) => {
             );
         }
 
-        const displayData = filteredData.length > 0 ? filteredData : (route?.name === 'HomeTab' ? data : []);
+        const displayData = filteredData.length > 0 ? filteredData : (routeName === 'HomeTab' ? data : []);
 
         const featuredSection = displayData.find(s => s.title === 'Featured');
 
         let heroSource = null;
         if (featuredSection && featuredSection.movies.length > 0) {
             heroSource = featuredSection.movies[0];
-            setSections(displayData.filter(s => s.title !== 'Featured'));
+            setSections(displayData.filter(s => s.title !== 'Featured' && s.title !== 'API'));
         } else if (displayData.length > 0 && displayData[0].movies.length > 0) {
             heroSource = displayData[0].movies[0];
-            setSections(displayData);
+            setSections(displayData.filter(s => s.title !== 'API'));
         }
         if (heroSource) {
             // Optimistic update: Show hero immediately with available data
@@ -116,7 +130,7 @@ const HomeScreen = ({ route }: any) => {
             });
         } else {
             setHeroMovie(null);
-            setSections(displayData);
+            setSections(displayData.filter(s => s.title !== 'API'));
         }
 
         setLoading(false);
@@ -158,13 +172,29 @@ const HomeScreen = ({ route }: any) => {
         );
     }
 
+    const getFilteredSections = () => {
+        let data = sections;
+        if (activeCategory === 'Movies') {
+            data = sections.filter(s => s.title.toLowerCase().includes('movie') || s.title.toLowerCase().includes('film'));
+        } else if (activeCategory === 'Series') {
+            data = sections.filter(s => s.title.toLowerCase().includes('series') || s.title.toLowerCase().includes('tv'));
+        }
+        return data;
+    };
+
+    const filteredSections = getFilteredSections();
+
     return (
         <GradientBackground colors={['#39101E', '#080204']} style={{ flex: 1 }}>
             <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
 
             <View style={{ flex: 1 }}>
                 <FlatList
-                    data={historySection ? [historySection, ...sections] : sections}
+                    data={[
+                        ...(historySection ? [historySection] : []),
+                        ...(watchlistSection ? [watchlistSection] : []),
+                        ...filteredSections
+                    ]}
                     keyExtractor={(item, index) => `${item.title}-${index}`}
                     renderItem={({ item, index }) => (
                         <FadeInView delay={index * 100} slideUp duration={600}>
@@ -204,8 +234,24 @@ const HomeScreen = ({ route }: any) => {
                     tint="dark"
                 >
                     <View style={styles.headerContent}>
-                        <View />
-                        <View />
+                        {routeName === 'HomeTab' ? (
+                            <View style={styles.pillsContainer}>
+                                {['All', 'Movies', 'Series'].map((cat) => (
+                                    <TouchableOpacity
+                                        key={cat}
+                                        style={activeCategory === cat ? styles.activePill : styles.pill}
+                                        onPress={() => setActiveCategory(cat)}
+                                    >
+                                        <Text style={activeCategory === cat ? styles.activePillText : styles.pillText}>
+                                            {cat === 'Series' ? 'TV Shows' : cat}
+                                        </Text>
+                                    </TouchableOpacity>
+                                ))}
+                            </View>
+                        ) : (
+                            <View /> // Spacer for other tabs if needed, or just empty
+                        )}
+
                         <TouchableOpacity onPress={() => navigation.navigate('Search')}>
                             <Image source={{ uri: 'https://img.icons8.com/ios-filled/50/ffffff/search--v1.png' }} style={styles.icon} />
                         </TouchableOpacity>
@@ -273,6 +319,31 @@ const styles = StyleSheet.create({
         width: 24,
         height: 24,
         tintColor: 'white',
+    },
+    pillsContainer: {
+        flexDirection: 'row',
+        gap: 10,
+        alignItems: 'center',
+    },
+    activePill: {
+        backgroundColor: 'white',
+        paddingHorizontal: 15,
+        paddingVertical: 6,
+        borderRadius: 20,
+    },
+    pill: {
+        paddingHorizontal: 10,
+        paddingVertical: 6,
+    },
+    activePillText: {
+        color: 'black',
+        fontWeight: 'bold',
+        fontSize: 14,
+    },
+    pillText: {
+        color: '#aaa',
+        fontWeight: 'bold',
+        fontSize: 14,
     },
     scrollView: {
         flex: 1,
