@@ -9,9 +9,11 @@ const { width, height } = Dimensions.get('window');
 interface PrimeHeroProps {
     movie: Movie;
     onPress: (movie: Movie) => void;
+    inWatchlist?: boolean;
+    onToggleWatchlist?: () => void;
 }
 
-const PrimeHero = ({ movie, onPress }: PrimeHeroProps) => {
+const PrimeHero = ({ movie, onPress, inWatchlist, onToggleWatchlist }: PrimeHeroProps) => {
     return (
         <TouchableOpacity activeOpacity={0.9} onPress={() => onPress(movie)} style={styles.container}>
             <Image
@@ -49,8 +51,8 @@ const PrimeHero = ({ movie, onPress }: PrimeHeroProps) => {
                         </View>
 
                         <View style={styles.actions}>
-                            <TouchableOpacity style={styles.iconButton}>
-                                <Plus size={24} color="white" />
+                            <TouchableOpacity style={styles.iconButton} onPress={onToggleWatchlist}>
+                                {inWatchlist ? <Check size={24} color="white" /> : <Plus size={24} color="white" />}
                             </TouchableOpacity>
                             <TouchableOpacity style={styles.iconButton}>
                                 <Info size={24} color="white" />

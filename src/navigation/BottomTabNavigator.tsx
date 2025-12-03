@@ -1,9 +1,10 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { Home, Film, Tv, LayoutGrid } from 'lucide-react-native';
+import { Home, Film, Tv, LayoutGrid, User } from 'lucide-react-native';
 import HomeScreen from '../screens/HomeScreen';
 import ProviderScreen from '../screens/ProviderScreen';
 import HomeWrapper from '../screens/HomeWrapper';
+import ProfileScreen from '../screens/ProfileScreen';
 
 const Tab = createBottomTabNavigator();
 
@@ -62,6 +63,14 @@ const BottomTabNavigator = () => {
                 options={{
                     tabBarLabel: 'Provider',
                     tabBarIcon: ({ color, size }) => <LayoutGrid color={color} size={size} />,
+                }}
+            />
+            <Tab.Screen
+                name="Profile"
+                component={ProfileScreen}
+                options={{
+                    tabBarLabel: 'Profile',
+                    tabBarIcon: ({ color, size }) => <User color={color} size={size} />,
                 }}
             />
 

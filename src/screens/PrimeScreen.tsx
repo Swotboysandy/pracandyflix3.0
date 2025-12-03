@@ -14,6 +14,7 @@ import { useNavigation } from '@react-navigation/native';
 import { useFocusEffect } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { fetchPrimeHomeData, Section, Movie, getHistory } from '../services/api';
+import { getWatchlist, addToWatchlist, removeFromWatchlist, isInWatchlist } from '../services/watchlistService';
 import { RootStackParamList } from '../navigation/types';
 import GradientBackground from '../components/GradientBackground';
 import FadeInView from '../components/FadeInView';
@@ -31,7 +32,9 @@ const PrimeScreen = () => {
     const [heroMovie, setHeroMovie] = useState<Movie | null>(null);
     const [selectedProvider] = useState<string>('Prime');
     const [historySection, setHistorySection] = useState<Section | null>(null);
+    const [watchlistSection, setWatchlistSection] = useState<Section | null>(null);
     const [activeCategory, setActiveCategory] = useState<string>('All');
+    const [heroInWatchlist, setHeroInWatchlist] = useState(false);
 
     useFocusEffect(
         React.useCallback(() => {
@@ -49,6 +52,16 @@ const PrimeScreen = () => {
         } else {
             setHistorySection(null);
         }
+
+        const watchlist = await getWatchlist('Prime');
+        if (watchlist.length > 0) {
+            setWatchlistSection({
+                title: 'Your Watchlist',
+                movies: watchlist
+            });
+        } else {
+            setWatchlistSection(null);
+        }
     };
 
     useEffect(() => {
@@ -61,11 +74,15 @@ const PrimeScreen = () => {
 
         const featuredSection = data.find(s => s.title === 'Featured');
         if (featuredSection && featuredSection.movies.length > 0) {
-            setHeroMovie(featuredSection.movies[0]);
+            const hero = featuredSection.movies[0];
+            setHeroMovie(hero);
             setSections(data.filter(s => s.title !== 'Featured'));
+            isInWatchlist(hero.id).then(inList => setHeroInWatchlist(inList));
         } else if (data.length > 0 && data[0].movies.length > 0) {
-            setHeroMovie(data[0].movies[0]);
+            const hero = data[0].movies[0];
+            setHeroMovie(hero);
             setSections(data);
+            isInWatchlist(hero.id).then(inList => setHeroInWatchlist(inList));
         } else {
             setSections(data);
             setHeroMovie(null);
@@ -84,6 +101,18 @@ const PrimeScreen = () => {
 
     const handleSearchPress = () => {
         navigation.navigate('Search', { initialProvider: 'Prime' });
+    };
+
+    const handleToggleHeroWatchlist = async () => {
+        if (!heroMovie) return;
+
+        if (heroInWatchlist) {
+            await removeFromWatchlist(heroMovie.id);
+            setHeroInWatchlist(false);
+        } else {
+            await addToWatchlist({ ...heroMovie, provider: selectedProvider }, 'movie');
+            setHeroInWatchlist(true);
+        }
     };
 
     const getFilteredSections = () => {
@@ -139,19 +168,32 @@ const PrimeScreen = () => {
 
             <View style={{ flex: 1 }}>
                 <FlatList
-                    data={historySection ? [historySection, ...filteredSections] : filteredSections}
+                    data={
+                        historySection || watchlistSection
+                            ? [
+                                ...(historySection ? [historySection] : []),
+                                ...(watchlistSection ? [watchlistSection] : []),
+                                ...filteredSections
+                            ]
+                            : filteredSections
+                    }
                     keyExtractor={(item, index) => `${item.title}-${index}`}
                     renderItem={renderItem}
                     ListHeaderComponent={
                         heroMovie ? (
                             <FadeInView duration={800} slideUp>
                                 <View style={styles.heroWrapper}>
-                                    <PrimeHero movie={heroMovie} onPress={handleMoviePress} />
+                                    <PrimeHero
+                                        movie={heroMovie}
+                                        onPress={handleMoviePress}
+                                        inWatchlist={heroInWatchlist}
+                                        onToggleWatchlist={handleToggleHeroWatchlist}
+                                    />
                                 </View>
                             </FadeInView>
                         ) : null
                     }
-                    contentContainerStyle={[styles.scrollContent, { paddingTop: 0 }]} // Remove padding as Hero handles it
+                    contentContainerStyle={[styles.scrollContent, { paddingTop: 0 }]}
                     showsVerticalScrollIndicator={false}
                     removeClippedSubviews={true}
                     initialNumToRender={3}

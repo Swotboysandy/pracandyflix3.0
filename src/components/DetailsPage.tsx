@@ -13,8 +13,9 @@ import {
     BackHandler,
 } from 'react-native';
 import { fetchMovieDetails, MovieDetails, Episode, SuggestedMovie, getStreamUrl, Movie } from '../services/api';
+import { addToWatchlist, removeFromWatchlist, isInWatchlist } from '../services/watchlistService';
 import VideoPlayer from './VideoPlayer';
-import { Play, Plus, Download, Star, ChevronDown, ChevronLeft } from 'lucide-react-native';
+import { Play, Plus, Star, ChevronDown, ChevronLeft, Check } from 'lucide-react-native';
 
 interface DetailsPageProps {
     movieId: string;
@@ -38,6 +39,7 @@ const DetailsPage: React.FC<DetailsPageProps> = ({ movieId, onClose, onMoviePres
 
     const [currentEpisode, setCurrentEpisode] = useState<Episode | null>(null);
     const [activeTab, setActiveTab] = useState<string>('Overview');
+    const [inWatchlist, setInWatchlist] = useState(false);
 
     // Determine tabs based on content type
     let tabs = (details?.type === 't' || details?.season)
@@ -71,8 +73,14 @@ const DetailsPage: React.FC<DetailsPageProps> = ({ movieId, onClose, onMoviePres
 
     useEffect(() => {
         loadDetails();
+        checkWatchlistStatus();
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
+
+    const checkWatchlistStatus = async () => {
+        const status = await isInWatchlist(movieId);
+        setInWatchlist(status);
+    };
 
     useEffect(() => {
         const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
@@ -105,9 +113,7 @@ const DetailsPage: React.FC<DetailsPageProps> = ({ movieId, onClose, onMoviePres
                     {episode.ep_desc || 'No description available.'}
                 </Text>
             </View>
-            <TouchableOpacity style={styles.downloadButton}>
-                <Download size={20} color="#ccc" />
-            </TouchableOpacity>
+
         </TouchableOpacity>
         // eslint-disable-next-line react-hooks/exhaustive-deps
     ), [movieId, providerId, getPosterUrl]);
@@ -208,6 +214,25 @@ const DetailsPage: React.FC<DetailsPageProps> = ({ movieId, onClose, onMoviePres
 
         if (!hasEpisodes) {
             await fetchSeasonEpisodes(seasonStr, details);
+        }
+    };
+
+    const handleToggleWatchlist = async () => {
+        if (!details) return;
+
+        if (inWatchlist) {
+            await removeFromWatchlist(movieId);
+            setInWatchlist(false);
+        } else {
+            const movieItem: Movie = {
+                id: movieId,
+                title: details.title,
+                imageUrl: getPosterUrl(movieId, 'poster'),
+                provider: providerId,
+            };
+            const type = (details.type === 't' || details.season) ? 'series' : 'movie';
+            await addToWatchlist(movieItem, type);
+            setInWatchlist(true);
         }
     };
 
@@ -398,8 +423,8 @@ const DetailsPage: React.FC<DetailsPageProps> = ({ movieId, onClose, onMoviePres
                 <View style={styles.infoContainer}>
                     <View style={styles.headerRow}>
                         <Text style={styles.title}>{details.title}</Text>
-                        <TouchableOpacity style={styles.addButton}>
-                            <Plus color="#fff" size={24} />
+                        <TouchableOpacity style={styles.addButton} onPress={handleToggleWatchlist}>
+                            {inWatchlist ? <Check color="#fff" size={24} /> : <Plus color="#fff" size={24} />}
                         </TouchableOpacity>
                     </View>
 

@@ -16,7 +16,7 @@ import { useNavigation } from '@react-navigation/native';
 import { useFocusEffect } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { fetchHomeData, Section, Movie, fetchMovieDetails, getHistory } from '../services/api';
-import { getWatchlist } from '../services/watchlistService';
+import { getWatchlist, addToWatchlist, removeFromWatchlist, isInWatchlist } from '../services/watchlistService';
 import Row from '../components/Row';
 import MovieItem from '../components/MovieItem';
 import { RootStackParamList } from '../navigation/types';
@@ -40,8 +40,7 @@ const HomeScreen = ({ route }: any) => {
     const [historySection, setHistorySection] = useState<Section | null>(null);
     const [watchlistSection, setWatchlistSection] = useState<Section | null>(null);
     const [activeCategory, setActiveCategory] = useState<string>('All');
-
-
+    const [heroInWatchlist, setHeroInWatchlist] = useState(false);
 
     useFocusEffect(
         React.useCallback(() => {
@@ -108,26 +107,21 @@ const HomeScreen = ({ route }: any) => {
             setSections(displayData.filter(s => s.title !== 'API'));
         }
         if (heroSource) {
-            // Optimistic update: Show hero immediately with available data
             setHeroMovie(heroSource);
-
-            // Fetch real details to get the actual title because the list API only returns IDs
             fetchMovieDetails(heroSource.id).then(details => {
-                console.log('Hero Movie Details:', JSON.stringify(details, null, 2));
                 if (details && details.title) {
                     const d = details as any;
                     setHeroMovie({
                         ...heroSource,
                         title: details.title,
-                        // Prioritize: 1. High-Res Poster (Vertical), 2. Upgraded List Image (Vertical), 3. Original, 4. Backdrop (Fallback)
                         imageUrl: d.poster || d.image || heroSource.imageUrl || heroSource.originalImageUrl || d.backdrop,
-                        tags: d.genre ? d.genre.split(',').slice(0, 3).join(' • ') : '', // Limit to 3 tags
-                    } as any); // Cast to any to allow extra props
+                        tags: d.genre ? d.genre.split(',').slice(0, 3).join(' • ') : '',
+                    } as any);
                 }
-                // No need for else/catch to setHeroMovie(heroSource) as it's already set
-            }).catch(() => {
-                // Keep existing heroSource
-            });
+            }).catch(() => { });
+
+            const inList = await isInWatchlist(heroSource.id);
+            setHeroInWatchlist(inList);
         } else {
             setHeroMovie(null);
             setSections(displayData.filter(s => s.title !== 'API'));
@@ -151,6 +145,18 @@ const HomeScreen = ({ route }: any) => {
         setIsProviderModalVisible(false);
         if (provider === 'Prime') {
             navigation.navigate('Prime');
+        }
+    };
+
+    const handleToggleHeroWatchlist = async () => {
+        if (!heroMovie) return;
+
+        if (heroInWatchlist) {
+            await removeFromWatchlist(heroMovie.id);
+            setHeroInWatchlist(false);
+        } else {
+            await addToWatchlist({ ...heroMovie, provider: selectedProvider }, 'movie');
+            setHeroInWatchlist(true);
         }
     };
 
@@ -213,7 +219,9 @@ const HomeScreen = ({ route }: any) => {
                                         movie={heroMovie}
                                         onPress={handleMoviePress}
                                         isHero
-                                        tags={(heroMovie as any).tags} // Pass tags prop
+                                        tags={(heroMovie as any).tags}
+                                        inWatchlist={heroInWatchlist}
+                                        onToggleWatchlist={handleToggleHeroWatchlist}
                                     />
                                 </View>
                             </FadeInView>
@@ -227,7 +235,6 @@ const HomeScreen = ({ route }: any) => {
                     windowSize={5}
                 />
 
-                {/* Glass Header */}
                 <GlassHeader
                     style={[styles.topBar, { paddingTop: insets.top + 10, paddingBottom: 10 }]}
                     intensity={80}
@@ -249,7 +256,7 @@ const HomeScreen = ({ route }: any) => {
                                 ))}
                             </View>
                         ) : (
-                            <View /> // Spacer for other tabs if needed, or just empty
+                            <View />
                         )}
 
                         <TouchableOpacity onPress={() => navigation.navigate('Search')}>
@@ -259,7 +266,6 @@ const HomeScreen = ({ route }: any) => {
                 </GlassHeader>
             </View>
 
-            {/* Provider Switcher Modal */}
             <Modal
                 visible={isProviderModalVisible}
                 transparent={true}

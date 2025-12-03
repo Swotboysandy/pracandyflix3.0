@@ -2,7 +2,7 @@ import React from 'react';
 import { TouchableOpacity, StyleSheet, Dimensions, View, Text } from 'react-native';
 import FastImage from 'react-native-fast-image';
 import { Movie } from '../services/api';
-import { Play, Plus } from 'lucide-react-native';
+import { Play, Plus, Check } from 'lucide-react-native';
 import Svg, { Defs, LinearGradient, Stop, Rect } from 'react-native-svg';
 import ScalePressable from './ScalePressable';
 
@@ -13,11 +13,13 @@ interface MovieItemProps {
     tags?: string;
     progress?: number; // 0 to 1
     progressColor?: string;
+    inWatchlist?: boolean;
+    onToggleWatchlist?: () => void;
 }
 
 const { width } = Dimensions.get('window');
 
-const MovieItem: React.FC<MovieItemProps> = ({ movie, onPress, isHero, tags, progress, progressColor = '#E50914' }) => {
+const MovieItem: React.FC<MovieItemProps> = ({ movie, onPress, isHero, tags, progress, progressColor = '#E50914', inWatchlist, onToggleWatchlist }) => {
     if (isHero) {
         // Check if title is just a number (ID) - hide title if true
         const isOnlyNumber = /^\d+$/.test(movie.title);
@@ -73,8 +75,9 @@ const MovieItem: React.FC<MovieItemProps> = ({ movie, onPress, isHero, tags, pro
                             <TouchableOpacity
                                 style={styles.listButton}
                                 activeOpacity={0.8}
+                                onPress={onToggleWatchlist}
                             >
-                                <Plus color="#fff" size={22} />
+                                {inWatchlist ? <Check color="#fff" size={22} /> : <Plus color="#fff" size={22} />}
                                 <Text style={styles.listButtonText}>My List</Text>
                             </TouchableOpacity>
                         </View>
