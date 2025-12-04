@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, Text, StyleSheet, Image, Dimensions, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, Dimensions, TouchableOpacity } from 'react-native';
+import FastImage from 'react-native-fast-image';
 import Svg, { Defs, Rect, LinearGradient, Stop } from 'react-native-svg';
 import { Plus, Info, Check } from 'lucide-react-native';
 import { Movie } from '../../services/api';
@@ -16,10 +17,10 @@ interface PrimeHeroProps {
 const PrimeHero = ({ movie, onPress, inWatchlist, onToggleWatchlist }: PrimeHeroProps) => {
     return (
         <TouchableOpacity activeOpacity={0.9} onPress={() => onPress(movie)} style={styles.container}>
-            <Image
-                source={{ uri: movie.imageUrl }}
+            <FastImage
+                source={{ uri: movie.imageUrl, priority: FastImage.priority.high }}
                 style={styles.image}
-                resizeMode="cover"
+                resizeMode={FastImage.resizeMode.cover}
             />
 
             <View style={styles.gradient}>

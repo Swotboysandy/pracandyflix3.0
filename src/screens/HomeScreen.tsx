@@ -198,7 +198,6 @@ const HomeScreen = ({ route }: any) => {
                 <FlatList
                     data={[
                         ...(historySection ? [historySection] : []),
-                        ...(watchlistSection ? [watchlistSection] : []),
                         ...filteredSections
                     ]}
                     keyExtractor={(item, index) => `${item.title}-${index}`}

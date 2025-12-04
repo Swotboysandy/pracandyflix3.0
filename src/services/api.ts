@@ -628,6 +628,26 @@ const getConsumetStreamUrl = async (
     }
 };
 
+const searchConsumet = async (query: string): Promise<Movie[]> => {
+    try {
+        const searchUrl = `${CONSUMET_URL}/movies/flixhq/${encodeURIComponent(query)}`;
+        const response = await axios.get(searchUrl);
+
+        if (response.data && response.data.results) {
+            return response.data.results.map((item: any) => ({
+                id: item.id,
+                title: item.title,
+                imageUrl: item.image,
+                provider: 'Prime', // Consumet fallback is mainly used for Prime/Netflix
+            }));
+        }
+        return [];
+    } catch (error) {
+        console.error('Consumet Search Error:', error);
+        return [];
+    }
+};
+
 export const searchMovies = async (query: string, providerId: string = 'Netflix'): Promise<Movie[]> => {
     try {
         // 1. Fetch Cookies
@@ -683,18 +703,17 @@ export const searchMovies = async (query: string, providerId: string = 'Netflix'
         return [];
     } catch (error) {
         console.error('Error searching movies:', error);
-        return [];
+        // Fallback to Consumet on error
+        console.log('Primary search error, trying Consumet...');
+        return await searchConsumet(query);
     }
 };
 
 export const fetchPrimeHomeData = async (): Promise<Section[]> => {
     try {
         const movieQueries = [
-            'Top Movies', 'Top Rated', 'Recently Added', 'English Movies',
-            'Latest Movies', 'Top 10 India', 'Romance', 'Romantic Comedy',
-            'Young Adult', 'Horror', 'Action', 'Thriller', 'Drama', 'Sci-Fi',
-            'Adventure', 'Fantasy', 'Crime', 'Mystery', 'Documentary', 'Kids',
-            'Hindi Movies', 'Telugu Movies', 'Tamil Movies', 'Malayalam Movies'
+            'Top Movies', 'Recently Added', 'Action', 'Comedy', 'Drama',
+            'Sci-Fi', 'Horror', 'Thriller', 'Romance', 'Kids'
         ];
 
         const seriesQueries = [
@@ -705,8 +724,12 @@ export const fetchPrimeHomeData = async (): Promise<Section[]> => {
         const fetchSection = async (q: string, suffix: string = '') => {
             try {
                 const movies = await searchMovies(q, 'Prime');
+                let title = q;
+                if (suffix && !q.toLowerCase().includes(suffix.toLowerCase())) {
+                    title = `${q} ${suffix}`;
+                }
                 return {
-                    title: suffix ? `${q} ${suffix}` : q,
+                    title: title,
                     movies: movies
                 };
             } catch (e) {

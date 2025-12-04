@@ -12,7 +12,8 @@ import {
     Alert,
     BackHandler,
 } from 'react-native';
-import { fetchMovieDetails, MovieDetails, Episode, SuggestedMovie, getStreamUrl, Movie } from '../services/api';
+import FastImage from 'react-native-fast-image';
+import { fetchMovieDetails, MovieDetails, Episode, SuggestedMovie, getStreamUrl, Movie, getHistory } from '../services/api';
 import { addToWatchlist, removeFromWatchlist, isInWatchlist } from '../services/watchlistService';
 import VideoPlayer from './VideoPlayer';
 import { Play, Plus, Star, ChevronDown, ChevronLeft, Check } from 'lucide-react-native';
@@ -32,7 +33,7 @@ const DetailsPage: React.FC<DetailsPageProps> = ({ movieId, onClose, onMoviePres
     const [loading, setLoading] = useState(true);
     const [selectedSeason, setSelectedSeason] = useState<string>('1');
     const [_loadingStream, setLoadingStream] = useState(false);
-    const [videoStream, setVideoStream] = useState<{ url: string; cookies: string; title: string; referer?: string; sources?: any[]; tracks?: any[] } | null>(null);
+    const [videoStream, setVideoStream] = useState<{ url: string; cookies: string; title: string; referer?: string; sources?: any[]; tracks?: any[]; startTime?: number } | null>(null);
     const [allEpisodes, setAllEpisodes] = useState<Episode[]>([]);
     const [_fetchedSeasons, setFetchedSeasons] = useState<Set<string>>(new Set());
     const [seasonLoading, setSeasonLoading] = useState(false);
@@ -40,6 +41,7 @@ const DetailsPage: React.FC<DetailsPageProps> = ({ movieId, onClose, onMoviePres
     const [currentEpisode, setCurrentEpisode] = useState<Episode | null>(null);
     const [activeTab, setActiveTab] = useState<string>('Overview');
     const [inWatchlist, setInWatchlist] = useState(false);
+    const [resumeTime, setResumeTime] = useState<number>(0);
 
     // Determine tabs based on content type
     let tabs = (details?.type === 't' || details?.season)
@@ -74,8 +76,17 @@ const DetailsPage: React.FC<DetailsPageProps> = ({ movieId, onClose, onMoviePres
     useEffect(() => {
         loadDetails();
         checkWatchlistStatus();
+        checkHistoryStatus();
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
+
+    const checkHistoryStatus = async () => {
+        const history = await getHistory(providerId);
+        const item = history.find(h => h.id === movieId);
+        if (item && item.progress > 10 && item.progress < (item.duration || 7200) * 0.95) {
+            setResumeTime(item.progress);
+        }
+    };
 
     const checkWatchlistStatus = async () => {
         const status = await isInWatchlist(movieId);
@@ -97,10 +108,10 @@ const DetailsPage: React.FC<DetailsPageProps> = ({ movieId, onClose, onMoviePres
     const renderEpisode = useCallback((episode: Episode, _index: number) => (
         <TouchableOpacity key={episode.id} style={styles.episodeCard} onPress={() => handleEpisodePress(episode)}>
             <View style={styles.episodeThumbnailContainer}>
-                <Image
-                    source={{ uri: getPosterUrl(movieId, 'hero') }} // Using hero as fallback/placeholder since API might not give ep thumb
+                <FastImage
+                    source={{ uri: getPosterUrl(movieId, 'hero'), priority: FastImage.priority.normal }}
                     style={styles.episodeThumbnail}
-                    resizeMode="cover"
+                    resizeMode={FastImage.resizeMode.cover}
                 />
                 <View style={styles.episodePlayOverlay}>
                     <Play size={20} color="#fff" fill="#fff" />
@@ -236,7 +247,7 @@ const DetailsPage: React.FC<DetailsPageProps> = ({ movieId, onClose, onMoviePres
         }
     };
 
-    const handlePlayPress = async () => {
+    const handlePlayPress = async (startTime?: number) => {
         if (!details) return;
 
         // If it's a series, try to find the first episode
@@ -279,6 +290,7 @@ const DetailsPage: React.FC<DetailsPageProps> = ({ movieId, onClose, onMoviePres
                     referer: streamResult.referer,
                     sources: streamResult.sources,
                     tracks: streamResult.tracks,
+                    startTime: startTime
                 });
                 setCurrentEpisode(null); // Movie has no episode
             } else {
@@ -370,6 +382,7 @@ const DetailsPage: React.FC<DetailsPageProps> = ({ movieId, onClose, onMoviePres
                 movieId={movieId}
                 poster={getPosterUrl(movieId, 'poster')}
                 provider={providerId}
+                startTime={videoStream.startTime}
             />
         );
     }
@@ -401,13 +414,13 @@ const DetailsPage: React.FC<DetailsPageProps> = ({ movieId, onClose, onMoviePres
             <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
                 {/* Hero Image */}
                 <View style={styles.heroContainer}>
-                    <Image
-                        source={{ uri: getPosterUrl(movieId, 'hero') }}
+                    <FastImage
+                        source={{ uri: getPosterUrl(movieId, 'hero'), priority: FastImage.priority.high }}
                         style={styles.heroImage}
-                        resizeMode="cover"
+                        resizeMode={FastImage.resizeMode.cover}
                     />
                     <View style={styles.heroOverlay}>
-                        <TouchableOpacity style={styles.heroPlayButton} onPress={handlePlayPress}>
+                        <TouchableOpacity style={styles.heroPlayButton} onPress={() => handlePlayPress()}>
                             <View style={styles.playCircle}>
                                 <Play size={32} color="#fff" fill="#fff" style={{ marginLeft: 4 }} />
                             </View>
@@ -447,9 +460,9 @@ const DetailsPage: React.FC<DetailsPageProps> = ({ movieId, onClose, onMoviePres
                         ))}
                     </View>
 
-                    <TouchableOpacity style={styles.longPlayButton} onPress={handlePlayPress}>
+                    <TouchableOpacity style={styles.longPlayButton} onPress={() => handlePlayPress(resumeTime > 0 ? resumeTime : undefined)}>
                         <Play size={24} color="#000" fill="#000" />
-                        <Text style={styles.longPlayButtonText}>Play</Text>
+                        <Text style={styles.longPlayButtonText}>{resumeTime > 0 ? "Resume" : "Play"}</Text>
                     </TouchableOpacity>
 
                     <Text style={styles.description} numberOfLines={4}>

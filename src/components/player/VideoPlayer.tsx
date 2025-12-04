@@ -20,16 +20,18 @@ interface VideoPlayerProps {
     movieId?: string;
     poster?: string;
     provider?: string;
+    startTime?: number;
 }
 
 const VideoPlayer: React.FC<VideoPlayerProps> = (props) => {
-    const { videoUrl, title, cookies, referer, sources, tracks, onClose, onNextEpisode } = props;
+    const { videoUrl, title, cookies, referer, sources, tracks, onClose, onNextEpisode, startTime } = props;
 
     console.log('VideoPlayer mounted with:', {
         videoUrl,
         referer,
         sourcesCount: sources?.length,
-        firstSource: sources?.[0]
+        firstSource: sources?.[0],
+        startTime
     });
 
     const videoRef = useRef<any>(null);
@@ -198,11 +200,16 @@ const VideoPlayer: React.FC<VideoPlayerProps> = (props) => {
 
         if (!initialSeekDoneRef.current) {
             try {
-                const savedTime = await AsyncStorage.getItem(`progress_${videoUrl}`);
-                if (savedTime) {
-                    const time = parseFloat(savedTime);
-                    if (time < data.duration * 0.95) {
-                        videoRef.current?.seek(time);
+                if (startTime && startTime > 0) {
+                    console.log('Resuming from prop startTime:', startTime);
+                    videoRef.current?.seek(startTime);
+                } else {
+                    const savedTime = await AsyncStorage.getItem(`progress_${videoUrl}`);
+                    if (savedTime) {
+                        const time = parseFloat(savedTime);
+                        if (time < data.duration * 0.95) {
+                            videoRef.current?.seek(time);
+                        }
                     }
                 }
             } catch (e) {

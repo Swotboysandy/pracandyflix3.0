@@ -98,6 +98,7 @@ const ControlsOverlay: React.FC<ControlsOverlayProps> = ({
                         <TouchableOpacity onPress={onClose} style={styles.iconButton}>
                             <ChevronLeft color="#fff" size={28} />
                         </TouchableOpacity>
+
                         <Text style={styles.title} numberOfLines={1}>{title}</Text>
                         <View style={{ flexDirection: 'row' }}>
                             {onPiP && (
@@ -113,10 +114,7 @@ const ControlsOverlay: React.FC<ControlsOverlayProps> = ({
 
                     {/* Center Controls */}
                     <View style={styles.centerControls}>
-                        <TouchableOpacity onPress={onSkipBackward} style={styles.skipButton}>
-                            <SkipBack color="#fff" size={32} fill="#fff" />
-                            <Text style={styles.skipText}>-10</Text>
-                        </TouchableOpacity>
+
 
                         <TouchableOpacity onPress={onPlayPause} style={styles.playPauseButton}>
                             {paused ? (
@@ -126,10 +124,7 @@ const ControlsOverlay: React.FC<ControlsOverlayProps> = ({
                             )}
                         </TouchableOpacity>
 
-                        <TouchableOpacity onPress={onSkipForward} style={styles.skipButton}>
-                            <SkipForward color="#fff" size={32} fill="#fff" />
-                            <Text style={styles.skipText}>+10</Text>
-                        </TouchableOpacity>
+
                     </View>
 
                     {/* Bottom Bar */}

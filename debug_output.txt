@@ -1,0 +1,14 @@
+--- Testing Prime Series Queries with Fallback ---
+Primary: Searching for: Amazon Originals
+Primary Error: Request failed with status code 500
+Initiating Fallback...
+Fallback: Searching Consumet for: Amazon Originals
+Fallback: Found 13 results for "Amazon Originals"
+Fallback First result: Amazon
+Primary: Searching for: TV Shows
+Primary Error: Request failed with status code 500
+Initiating Fallback...
+Fallback: Searching Consumet for: TV Shows
+Fallback: Found 25 results for "TV Shows"
+Fallback First result: TV 101
+------------------------------------------------

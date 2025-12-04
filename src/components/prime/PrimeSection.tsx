@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, Text, StyleSheet, FlatList, Image, TouchableOpacity, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, Dimensions } from 'react-native';
+import FastImage from 'react-native-fast-image';
 import { Section, Movie } from '../../services/api';
 import { Play } from 'lucide-react-native';
 
@@ -23,10 +24,10 @@ const PrimeSection = ({ section, onMoviePress, variant = 'standard' }: PrimeSect
                     activeOpacity={0.8}
                 >
                     <View style={styles.thumbnailWrapper}>
-                        <Image
-                            source={{ uri: item.imageUrl }}
+                        <FastImage
+                            source={{ uri: item.imageUrl, priority: FastImage.priority.normal }}
                             style={styles.thumbnail}
-                            resizeMode="cover"
+                            resizeMode={FastImage.resizeMode.cover}
                         />
                         <View style={styles.playOverlay}>
                             <View style={styles.playCircle}>
@@ -54,16 +55,16 @@ const PrimeSection = ({ section, onMoviePress, variant = 'standard' }: PrimeSect
                 onPress={() => onMoviePress(item)}
                 activeOpacity={0.8}
             >
-                <Image
-                    source={{ uri: item.imageUrl }}
+                <FastImage
+                    source={{ uri: item.imageUrl, priority: FastImage.priority.normal }}
                     style={styles.poster}
-                    resizeMode="cover"
+                    resizeMode={FastImage.resizeMode.cover}
                 />
                 <View style={styles.primeIconOverlay}>
-                    <Image
-                        source={{ uri: 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/ca/Amazon_Prime_Video_logo_%282024%29.svg/2048px-Amazon_Prime_Video_logo_%282024%29.svg.png' }}
+                    <FastImage
+                        source={{ uri: 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/ca/Amazon_Prime_Video_logo_%282024%29.svg/2048px-Amazon_Prime_Video_logo_%282024%29.svg.png', priority: FastImage.priority.normal }}
                         style={styles.miniLogo}
-                        resizeMode="contain"
+                        resizeMode={FastImage.resizeMode.contain}
                     />
                 </View>
             </TouchableOpacity>
@@ -75,10 +76,10 @@ const PrimeSection = ({ section, onMoviePress, variant = 'standard' }: PrimeSect
             <View style={styles.header}>
                 {variant === 'standard' && (
                     <View style={styles.primeHeaderBadge}>
-                        <Image
-                            source={{ uri: 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/11/Amazon_Prime_Video_logo.svg/2560px-Amazon_Prime_Video_logo.svg.png' }}
+                        <FastImage
+                            source={{ uri: 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/11/Amazon_Prime_Video_logo.svg/2560px-Amazon_Prime_Video_logo.svg.png', priority: FastImage.priority.normal }}
                             style={styles.headerLogo}
-                            resizeMode="contain"
+                            resizeMode={FastImage.resizeMode.contain}
                         />
                     </View>
                 )}

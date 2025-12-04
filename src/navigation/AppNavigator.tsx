@@ -1,5 +1,5 @@
 import React from 'react';
-import { createStackNavigator } from '@react-navigation/stack';
+import { createStackNavigator, CardStyleInterpolators } from '@react-navigation/stack';
 import { RootStackParamList } from './types';
 import HomeScreen from '../screens/HomeScreen';
 import DetailsScreen from '../screens/DetailsScreen';
@@ -16,6 +16,7 @@ const AppNavigator = () => {
             screenOptions={{
                 headerShown: false,
                 presentation: 'card',
+                cardStyleInterpolator: CardStyleInterpolators.forFadeFromBottomAndroid,
             }}
         >
             <Stack.Screen name="Main" component={BottomTabNavigator} />
